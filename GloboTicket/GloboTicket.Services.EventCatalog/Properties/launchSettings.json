@@ -2,6 +2,10 @@
   "iisSettings": {
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
+    "iis": {
+      "applicationUrl": "http://localhost/GloboTicket.Services.EventCatalog",
+      "sslPort": 0
+    },
     "iisExpress": {
       "applicationUrl": "http://localhost:53024",
       "sslPort": 44394
