@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 
-namespace GloboTicket.Services.EventCatalog.Models
+namespace GloboTicket.Services.EventCatalog.Models.V2
 {
-    public class EventDtoV2
+    public class EventDto
     {
         public Guid EventId { get; set; }
         public string Name { get; set; }
