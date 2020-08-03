@@ -35,5 +35,21 @@ namespace GloboTicket.Services.EventCatalog.Controllers
             var result = await _eventRepository.GetEventById(eventId);
             return Ok(_mapper.Map<Models.EventDto>(result));
         }
+
+        [HttpGet]
+        [MapToApiVersion("2.0")]
+        public async Task<ActionResult<IEnumerable<Models.EventDtoV2>>> GetV2([FromQuery] Guid categoryId)
+        {
+            var result = await _eventRepository.GetEvents(categoryId);
+            return Ok(_mapper.Map<List<Models.EventDtoV2>>(result));
+        }
+
+        [HttpGet("{eventId}")]
+        [MapToApiVersion("2.0")]
+        public async Task<ActionResult<Models.EventDtoV2>> GetByIdV2(Guid eventId)
+        {
+            var result = await _eventRepository.GetEventById(eventId);
+            return Ok(_mapper.Map<Models.EventDtoV2>(result));
+        }
     }
 }

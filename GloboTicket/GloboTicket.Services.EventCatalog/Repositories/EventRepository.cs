@@ -22,12 +22,17 @@ namespace GloboTicket.Services.EventCatalog.Repositories
         {
             return await _eventCatalogDbContext.Events
                 .Include(x => x.Category)
+                .Include(x => x.Tickets)
                 .Where(x => (x.CategoryId == categoryId || categoryId == Guid.Empty)).ToListAsync();
         }
 
         public async Task<Event> GetEventById(Guid eventId)
         {
-            return await _eventCatalogDbContext.Events.Include(x => x.Category).Where(x => x.EventId == eventId).FirstOrDefaultAsync();
+            return await _eventCatalogDbContext.Events
+                .Include(x => x.Category)
+                .Include(x => x.Tickets)
+                .Where(x => x.EventId == eventId)
+                .FirstOrDefaultAsync();
         }
     }
 }
