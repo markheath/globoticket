@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace GloboTicket.Services.EventCatalog.Controllers
 {
+    [ApiVersion("1.0")]
     [Route("api/events")]
     [ApiController]
     public class EventController : ControllerBase

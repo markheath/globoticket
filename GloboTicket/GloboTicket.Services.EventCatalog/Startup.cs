@@ -32,6 +32,7 @@ namespace GloboTicket.Services.EventCatalog
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
             services.AddControllers();
+            services.AddApiVersioning(o => o.AssumeDefaultVersionWhenUnspecified = true);
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "EventDto Catalog API", Version = "v1" });
