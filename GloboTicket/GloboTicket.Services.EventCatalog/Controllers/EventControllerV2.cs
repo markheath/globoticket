@@ -10,6 +10,7 @@ namespace GloboTicket.Services.EventCatalog.Controllers.V2
 {
     [ApiVersion("2.0")]
     [Route("api/events")]
+    //[Route("api/v{version:apiVersion}/events")]
     [ApiController]
     public class EventController : ControllerBase
     {
