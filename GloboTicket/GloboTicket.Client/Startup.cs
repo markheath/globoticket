@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Azure.Storage;
+using Rebus.ServiceProvider;
+using Rebus.Config;
+using Rebus.Routing.TypeBased;
+using GloboTicket.Messages;
 
 namespace GloboTicket.Web
 {
@@ -33,6 +38,13 @@ namespace GloboTicket.Web
                 c.BaseAddress = new Uri(config["ApiConfigs:ShoppingBasket:Uri"]));
 
             services.AddSingleton<Settings>();
+
+            var storageAccount = CloudStorageAccount.Parse(config["AzureQueues:ConnectionString"]);
+
+            services.AddRebus(c => c
+                .Transport(t => t.UseAzureStorageQueuesAsOneWayClient(storageAccount))
+                .Routing(r => r.TypeBased().Map<PaymentRequestMessage>(config["AzureQueues:QueueName"]))
+            );
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -49,6 +61,7 @@ namespace GloboTicket.Web
             }
             app.UseHttpsRedirection();
             app.UseStaticFiles();
+            app.ApplicationServices.UseRebus();
 
             app.UseRouting();
 
