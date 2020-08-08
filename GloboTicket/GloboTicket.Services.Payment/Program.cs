@@ -16,6 +16,7 @@ namespace GloboTicket.Services.Payment
 
             using var activator = new BuiltinHandlerActivator();
             activator.Register(() => new NewOrderHandler());
+            activator.Register(() => new NewOrderHandlerV2());
             Configure.With(activator)
                 .Transport(t => t.UseAzureStorageQueues(storageAccount, config["AzureQueues:QueueName"]))
                 .Start();

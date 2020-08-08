@@ -13,4 +13,13 @@ namespace GloboTicket.Services.Payment
             return Task.CompletedTask;
         }
     }
+
+    public class NewOrderHandlerV2 : IHandleMessages<PaymentRequestMessageV2>
+    {
+        public Task Handle(PaymentRequestMessageV2 message)
+        {
+            Console.WriteLine($"Payment request received for order id {message.OrderId}.");
+            return Task.CompletedTask;
+        }
+    }
 }

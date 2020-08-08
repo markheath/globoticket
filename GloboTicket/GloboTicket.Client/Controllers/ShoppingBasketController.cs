@@ -71,7 +71,8 @@ namespace GloboTicket.Web.Controllers
         public async Task<IActionResult> Pay()
         {
             var basketId = Request.Cookies.GetCurrentBasketId(settings);
-            await bus.Send(new PaymentRequestMessage { BasketId = basketId });
+            //await bus.Send(new PaymentRequestMessage { BasketId = basketId });
+            await bus.Send(new PaymentRequestMessageV2 { OrderId = basketId });
             return View("Thanks");
         }
     }

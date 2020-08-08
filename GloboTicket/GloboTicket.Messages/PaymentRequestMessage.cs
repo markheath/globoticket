@@ -6,4 +6,9 @@ namespace GloboTicket.Messages
     {
         public Guid BasketId { get; set; }
     }
+
+    public class PaymentRequestMessageV2
+    {
+        public Guid OrderId { get; set; }
+    }
 }

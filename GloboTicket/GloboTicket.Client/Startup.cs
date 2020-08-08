@@ -43,7 +43,9 @@ namespace GloboTicket.Web
 
             services.AddRebus(c => c
                 .Transport(t => t.UseAzureStorageQueuesAsOneWayClient(storageAccount))
-                .Routing(r => r.TypeBased().Map<PaymentRequestMessage>(config["AzureQueues:QueueName"]))
+                .Routing(r => r.TypeBased()
+                        .Map<PaymentRequestMessage>(config["AzureQueues:QueueName"])
+                        .Map<PaymentRequestMessageV2>(config["AzureQueues:QueueName"]))
             );
         }
 
