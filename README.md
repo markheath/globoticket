@@ -57,7 +57,7 @@ The Shopping Basket microservice will be running on port 5002 and you can view t
 
 ### Troubleshooting
 
-Delete the ShoppingBasketId cookie if you are getting not found errors loading the home page
+Delete the `BasketId` cookie if you are getting not found errors loading the home page
 
 
 
