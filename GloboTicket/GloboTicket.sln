@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30128.74
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GloboTicket.Web", "GloboTicket.Client\GloboTicket.Web.csproj", "{0848F9B8-B1CC-412F-9A8C-A09058575A1E}"
 EndProject
@@ -13,13 +13,20 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GloboTicket.Services.Shoppi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GloboTicket.Services.EventCatalog", "GloboTicket.Services.EventCatalog\GloboTicket.Services.EventCatalog.csproj", "{E2C27A67-A664-4501-8045-C71F13924979}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GloboTicket.Services.EventCatalog.IntegrationTests", "GloboTicket.Services.EventCatalog.IntegrationTests\GloboTicket.Services.EventCatalog.IntegrationTests.csproj", "{FA2B8A38-7602-4BBF-BAB2-374940B7EF6E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GloboTicket.Services.EventCatalog.IntegrationTests", "GloboTicket.Services.EventCatalog.IntegrationTests\GloboTicket.Services.EventCatalog.IntegrationTests.csproj", "{FA2B8A38-7602-4BBF-BAB2-374940B7EF6E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GloboTicket.Services.Payment", "GloboTicket.Services.Payment\GloboTicket.Services.Payment.csproj", "{79760524-CF23-4485-927F-90E90A832BEA}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{10C6D2CB-AFC2-44B3-A0FD-EFBB74591F54}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GloboTicket.Messages", "GloboTicket.Messages\GloboTicket.Messages.csproj", "{E6251592-432A-4E87-BD48-3E0AFA8A0A7E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{B2BF999F-9D91-496E-948D-9B555B20F1DA}"
+	ProjectSection(SolutionItems) = preProject
+		GloboTicket.Services.ShoppingBasket\.config\dotnet-tools.json = GloboTicket.Services.ShoppingBasket\.config\dotnet-tools.json
+		GloboTicket.Services.EventCatalog\.config\dotnet-tools.json = GloboTicket.Services.EventCatalog\.config\dotnet-tools.json
+		..\README.md = ..\README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
