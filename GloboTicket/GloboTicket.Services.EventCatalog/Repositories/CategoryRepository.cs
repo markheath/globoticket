@@ -22,7 +22,7 @@ namespace GloboTicket.Services.EventCatalog.Repositories
             return await _eventCatalogDbContext.Categories.ToListAsync();
         }
 
-        public async Task<Category> GetCategoryById(string categoryId)
+        public async Task<Category?> GetCategoryById(string categoryId)
         {
             return await _eventCatalogDbContext.Categories.Where(x => x.CategoryId.ToString() == categoryId).FirstOrDefaultAsync();
         }

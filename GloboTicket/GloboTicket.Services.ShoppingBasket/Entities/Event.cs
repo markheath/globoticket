@@ -1,11 +1,8 @@
-﻿using System;
+namespace GloboTicket.Services.ShoppingBasket.Entities;
 
-namespace GloboTicket.Services.ShoppingBasket.Entities
+public class Event
 {
-    public class Event
-    {
-        public Guid EventId { get; set; }
-        public string Name { get; set; }
-        public DateTime Date { get; set; }
-    }
+    public Guid EventId { get; set; }
+    public string Name { get; set; } = null!;
+    public DateTime Date { get; set; }
 }

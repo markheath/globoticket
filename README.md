@@ -1,63 +1,46 @@
-# GloboTicket ASP.NET Core Microservices Sample Application
+# GloboTicket
 
-GloboTicket is a sample ASP.NET Core Microservices application that you can learn about in the Pluralsight .NET Microservices Learning path. This path consists of the following courses:
+A sample ASP.NET Core microservices application used in the Pluralsight .NET Microservices learning path.
 
-- Microservices: The Big Picture
-- Getting Started with ASP.NET Core Microservices
-- Microservices Communication in ASP.NET Core
-- Implementing a data management strategy for an ASP.NET Core Microservices Architecture
-- Securing Microservices in ASP.NET Core
-- Versioning and Evolving Microservices in ASP.NET Core
-- Deploying ASP.NET Core microservices using Kubernetes and AKS
-- Implementing cross-cutting concerns for ASP.NET Core microservices
-- Strategies for Microservice Scalability and Availability in ASP.NET Core
+## Architecture
 
-### Prerequisites
+Four services orchestrated by .NET Aspire:
 
-In order to build and run the sample GloboTicket application, it is recommended that you have the following installed.
+- **GloboTicket.Web** — MVC front-end. Calls the EventCatalog and ShoppingBasket APIs and publishes payment messages.
+- **GloboTicket.Services.EventCatalog** — events/categories/tickets API, backed by SQL Server. Demonstrates URL-versioned APIs (`v1` returns a flat `price`, `v2` returns a `tickets` collection).
+- **GloboTicket.Services.ShoppingBasket** — basket API, backed by SQL Server.
+- **GloboTicket.Services.Payment** — Worker that consumes payment messages from RabbitMQ. Demonstrates message contract versioning (`PaymentRequestMessage` and `PaymentRequestMessageV2`).
 
-- [.NET 6 SDK](https://dotnet.microsoft.com/download). You can test that you have it installed by entering the command `dotnet --list-sdks`
-- [Entity Framework Command Line Tools](https://docs.microsoft.com/en-us/ef/core/miscellaneous/cli/dotnet). You can install these as a global tool with the command `dotnet tool install --global dotnet-ef`
-- [SQL Server Express](https://docs.microsoft.com/en-us/sql/sql-server/editions-and-components-of-sql-server-version-15?view=sql-server-ver15).
-- [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) (Community Edition or Greater) or [Visual Studio Code](https://code.visualstudio.com/)
+The **GloboTicket.AppHost** project orchestrates the whole graph — SQL Server, RabbitMQ, and the four services — through .NET Aspire.
 
-### Building the Code
+## Prerequisites
 
-You can either load `GloboTicket\GloboTicket.sln` in Visual Studio 2022 and build from within Visual Studio, or from the command line, in the same folder as `GloboTicket.sln`, enter the `dotnet build` command.
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- A container runtime (Docker Desktop, Podman Desktop, or Rancher Desktop) — Aspire runs SQL Server and RabbitMQ in containers.
 
-### Running the Migrations
-Before you run GloboTicket for the first time, you need to run the database migrations for all microservices that have a SQL database. These are the **event catalog** microservice, and the **shopping basket** microservice.
+## Build, test, run
 
-First, navigate into the `GloboTicket\GloboTicket.Services.EventCatalog` folder and run the `dotnet ef database update` command. You might need to run `dotnet tool restore` first.
+```bash
+cd GloboTicket
+dotnet build
+dotnet test
+dotnet run --project GloboTicket.AppHost
+```
 
-Then, navigate into the `\GloboTicket\GloboTicket.Services.ShoppingBasket` folder and run the `dotnet ef database update` command.
+`dotnet run` opens the Aspire dashboard. Once SQL Server and RabbitMQ are healthy, click the `web` resource to open the site. The first run pulls container images and may take a minute.
 
-### Launching Azurite
-This demo uses the [Azurite Azure Storage Emulator](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azurite) as the backing for the messaging. Follow the instructions in the Azurite documentation to start it locally.
+## What's where
 
-You may be able to find it already on your machine in the following location:
-`C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\Extensions\Microsoft\Azure Storage Emulator\Azurite.exe`
+| Concern | Where |
+|---|---|
+| Service orchestration, container resources, service discovery | `GloboTicket.AppHost/AppHost.cs` |
+| Shared OpenTelemetry, health checks, resilience | `GloboTicket.ServiceDefaults/Extensions.cs` |
+| API versioning | `Asp.Versioning.Mvc` (query string `?api-version=2.0`) |
+| OpenAPI docs | `Microsoft.AspNetCore.OpenApi` + Scalar UI at `/scalar/v1` |
+| Messaging | MassTransit on RabbitMQ |
+| Tests | `*.IntegrationTests` (WebApplicationFactory) and `*.Tests` (MassTransit test harness) |
 
-### Running the Application from Visual Studio 2022
-You can run the GloboTicket application directly from within **Visual Studio**. To do this, first you have to select each of the three microservices as the startup project and ensure that the start dropdown shows GloboTicket.MicroserviceName (and not **IIS Express**). This will ensure that each microservice runs on the expected ports. 
+## Backwards-compatibility lessons
 
-Then right-click on the solution file and select **Set Startup Projects**, and configure all three projects to either **Start** or **Start without Debugging** as desired. Now, when you run the project from within Visual Studio, all three projects will start up.
-
-### Running the Application from the Command Line
-Alternatively, you can run the GloboTicket application from the command line. You will need to open three separate command prompts, one for each `csproj` file. For each project, navigate into the folder containing the `.csproj` file and run the command `dotnet run`.
-
-**Note:** You may be asked to trust the .NET developer certificates. Make sure you do so, in order to use HTTPS to access the services.
-
-### Launch in a browser
-If you have followed the instructions, the GloboTicket client application (website) will be running on port 5000, which you can access in the browser at [https://localhost:5000](https://localhost:5000).
-
-The Event Catalog microservice will be running on port 5001 and you can view the API documentation at [https://localhost:5001/swagger](https://localhost:5001/swagger)
-
-The Shopping Basket microservice will be running on port 5002 and you can view the API documentation at [https://localhost:5002/swagger](https://localhost:5002/swagger)
-
-### Troubleshooting
-
-Delete the `BasketId` cookie if you are getting not found errors loading the home page
-
-
-
+- **API versioning** — see `EventController` (v1) and `Controllers/V2/EventController.cs` (v2). Backing tests live in `GloboTicket.Services.EventCatalog.IntegrationTests`.
+- **Message versioning** — see `PaymentRequestMessage` / `PaymentRequestMessageV2` in `GloboTicket.Messages` and the two consumers in `GloboTicket.Services.Payment`. Backing tests live in `GloboTicket.Services.Payment.Tests`.

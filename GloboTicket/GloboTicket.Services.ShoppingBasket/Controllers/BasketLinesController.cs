@@ -1,142 +1,110 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using AutoMapper;
+using GloboTicket.Services.ShoppingBasket.Mappings;
 using GloboTicket.Services.ShoppingBasket.Models;
 using GloboTicket.Services.ShoppingBasket.Repositories;
 using GloboTicket.Services.ShoppingBasket.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace GloboTicket.Services.ShoppingBasket.Controllers
+namespace GloboTicket.Services.ShoppingBasket.Controllers;
+
+[Route("api/baskets/{basketId}/basketlines")]
+[ApiController]
+public class BasketLinesController : ControllerBase
 {
-    [Route("api/baskets/{basketId}/basketlines")]
-    [ApiController]
-    public class BasketLinesController : ControllerBase
+    private readonly IBasketRepository _basketRepository;
+    private readonly IBasketLinesRepository _basketLinesRepository;
+    private readonly IEventRepository _eventRepository;
+    private readonly IEventCatalogService _eventCatalogService;
+
+    public BasketLinesController(
+        IBasketRepository basketRepository,
+        IBasketLinesRepository basketLinesRepository,
+        IEventRepository eventRepository,
+        IEventCatalogService eventCatalogService)
     {
-        private readonly IBasketRepository _basketRepository;
-        private readonly IBasketLinesRepository _basketLinesRepository;
-        private readonly IEventRepository _eventRepository;
-        private readonly IEventCatalogService _eventCatalogService;
-        private readonly IMapper _mapper;
+        _basketRepository = basketRepository;
+        _basketLinesRepository = basketLinesRepository;
+        _eventRepository = eventRepository;
+        _eventCatalogService = eventCatalogService;
+    }
 
-        public BasketLinesController(IBasketRepository basketRepository, 
-            IBasketLinesRepository basketLinesRepository, IEventRepository eventRepository, 
-            IEventCatalogService eventCatalogService, IMapper mapper)
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<BasketLine>>> Get(Guid basketId)
+    {
+        if (!await _basketRepository.BasketExists(basketId))
+            return NotFound();
+
+        var basketLines = await _basketLinesRepository.GetBasketLines(basketId);
+        return Ok(basketLines.Select(bl => bl.ToModel()));
+    }
+
+    [HttpGet("{basketLineId}", Name = "GetBasketLine")]
+    public async Task<ActionResult<BasketLine>> Get(Guid basketId, Guid basketLineId)
+    {
+        if (!await _basketRepository.BasketExists(basketId))
+            return NotFound();
+
+        var basketLine = await _basketLinesRepository.GetBasketLineById(basketLineId);
+        if (basketLine == null)
+            return NotFound();
+
+        return Ok(basketLine.ToModel());
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<BasketLine>> Post(Guid basketId, [FromBody] BasketLineForCreation basketLineForCreation)
+    {
+        if (!await _basketRepository.BasketExists(basketId))
+            return NotFound();
+
+        if (!await _eventRepository.EventExists(basketLineForCreation.EventId))
         {
-            _basketRepository = basketRepository;
-            _basketLinesRepository = basketLinesRepository;
-            _eventRepository = eventRepository;
-            _eventCatalogService = eventCatalogService;
-            _mapper = mapper;
+            var eventFromCatalog = await _eventCatalogService.GetEvent(basketLineForCreation.EventId);
+            _eventRepository.AddEvent(eventFromCatalog);
+            await _eventRepository.SaveChanges();
         }
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<BasketLine>>> Get(Guid basketId)
-        {
-            if (!await _basketRepository.BasketExists(basketId))
-            {
-                return NotFound();
-            }
+        var basketLineEntity = basketLineForCreation.ToEntity();
 
-            var basketLines = await _basketLinesRepository.GetBasketLines(basketId);
-            return Ok(_mapper.Map<IEnumerable<BasketLine>>(basketLines));             
-        }
+        var processedBasketLine = await _basketLinesRepository.AddOrUpdateBasketLine(basketId, basketLineEntity);
+        await _basketLinesRepository.SaveChanges();
 
-        [HttpGet("{basketLineId}", Name = "GetBasketLine")]
-        public async Task<ActionResult<BasketLine>> Get(Guid basketId, 
-            Guid basketLineId)
-        {
-            if (!await _basketRepository.BasketExists(basketId))
-            {
-                return NotFound();
-            }
+        return CreatedAtRoute(
+            "GetBasketLine",
+            new { basketId = basketLineEntity.BasketId, basketLineId = basketLineEntity.BasketLineId },
+            processedBasketLine.ToModel());
+    }
 
-            var basketLine = await _basketLinesRepository.GetBasketLineById(basketLineId);
-            if (basketLine == null)
-            {
-                return NotFound();
-            }
+    [HttpPut("{basketLineId}")]
+    public async Task<ActionResult<BasketLine>> Put(Guid basketId, Guid basketLineId, [FromBody] BasketLineForUpdate basketLineForUpdate)
+    {
+        if (!await _basketRepository.BasketExists(basketId))
+            return NotFound();
 
-            return Ok(_mapper.Map<BasketLine>(basketLine));
-        }
+        var basketLineEntity = await _basketLinesRepository.GetBasketLineById(basketLineId);
+        if (basketLineEntity == null)
+            return NotFound();
 
-        [HttpPost]
-        public async Task<ActionResult<BasketLine>> Post(Guid basketId, 
-            [FromBody] BasketLineForCreation basketLineForCreation)
-        {
-            if (!await _basketRepository.BasketExists(basketId))
-            {
-                return NotFound();
-            }
+        basketLineForUpdate.ApplyTo(basketLineEntity);
 
-            if (!await _eventRepository.EventExists(basketLineForCreation.EventId))
-            {
-                var eventFromCatalog = await _eventCatalogService.GetEvent(basketLineForCreation.EventId);
-                _eventRepository.AddEvent(eventFromCatalog);
-                await _eventRepository.SaveChanges();
-            }
+        _basketLinesRepository.UpdateBasketLine(basketLineEntity);
+        await _basketLinesRepository.SaveChanges();
 
-            var basketLineEntity = _mapper.Map<Entities.BasketLine>(basketLineForCreation);
+        return Ok(basketLineEntity.ToModel());
+    }
 
-            var processedBasketLine = await _basketLinesRepository.AddOrUpdateBasketLine(basketId, basketLineEntity);
-            await _basketLinesRepository.SaveChanges();
+    [HttpDelete("{basketLineId}")]
+    public async Task<IActionResult> Delete(Guid basketId, Guid basketLineId)
+    {
+        if (!await _basketRepository.BasketExists(basketId))
+            return NotFound();
 
-            var basketLineToReturn = _mapper.Map<BasketLine>(processedBasketLine);
+        var basketLineEntity = await _basketLinesRepository.GetBasketLineById(basketLineId);
+        if (basketLineEntity == null)
+            return NotFound();
 
-            return CreatedAtRoute(
-                "GetBasketLine",
-                new { basketId = basketLineEntity.BasketId, basketLineId = basketLineEntity.BasketLineId },
-                basketLineToReturn);
-        } 
+        _basketLinesRepository.RemoveBasketLine(basketLineEntity);
+        await _basketLinesRepository.SaveChanges();
 
-        [HttpPut("{basketLineId}")]
-        public async Task<ActionResult<BasketLine>> Put(Guid basketId, 
-            Guid basketLineId, 
-            [FromBody] BasketLineForUpdate basketLineForUpdate)
-        {
-            if (!await _basketRepository.BasketExists(basketId))
-            {
-                return NotFound();
-            }
-
-            var basketLineEntity = await _basketLinesRepository.GetBasketLineById(basketLineId);
-
-            if (basketLineEntity == null)
-            {
-                return NotFound();
-            }
-
-            // map the entity to a dto
-            // apply the updated field values to that dto
-            // map the dto back to an entity
-            _mapper.Map(basketLineForUpdate, basketLineEntity);
-
-            _basketLinesRepository.UpdateBasketLine(basketLineEntity);
-            await _basketLinesRepository.SaveChanges();
-
-            return Ok(_mapper.Map<BasketLine>(basketLineEntity));
-        } 
-
-        [HttpDelete("{basketLineId}")]
-        public async Task<IActionResult> Delete(Guid basketId, 
-            Guid basketLineId)
-        {
-            if (!await _basketRepository.BasketExists(basketId))
-            {
-                return NotFound();
-            }
-
-            var basketLineEntity = await _basketLinesRepository.GetBasketLineById(basketLineId);
-
-            if (basketLineEntity == null)
-            {
-                return NotFound();
-            }
-
-            _basketLinesRepository.RemoveBasketLine(basketLineEntity);
-            await _basketLinesRepository.SaveChanges();
-
-            return NoContent();
-        }
+        return NoContent();
     }
 }

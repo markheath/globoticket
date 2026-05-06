@@ -17,7 +17,7 @@ namespace GloboTicket.Services.ShoppingBasket.Repositories
             _shoppingBasketDbContext = shoppingBasketDbContext;
         }         
 
-        public async Task<Basket> GetBasketById(Guid basketId)
+        public async Task<Basket?> GetBasketById(Guid basketId)
         {
             return await _shoppingBasketDbContext.Baskets.Include(sb => sb.BasketLines)
                 .Where(b => b.BasketId == basketId).FirstOrDefaultAsync();

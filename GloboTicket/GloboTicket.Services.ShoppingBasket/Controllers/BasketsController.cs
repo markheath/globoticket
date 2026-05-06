@@ -1,55 +1,44 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using AutoMapper;
+using GloboTicket.Services.ShoppingBasket.Mappings;
 using GloboTicket.Services.ShoppingBasket.Models;
 using GloboTicket.Services.ShoppingBasket.Repositories;
 using Microsoft.AspNetCore.Mvc;
 
+namespace GloboTicket.Services.ShoppingBasket.Controllers;
 
-namespace GloboTicket.Services.ShoppingBasket.Controllers
+[Route("api/baskets")]
+[ApiController]
+public class BasketsController : ControllerBase
 {
-    [Route("api/baskets")]
-    [ApiController]
-    public class BasketsController : ControllerBase
+    private readonly IBasketRepository _basketRepository;
+
+    public BasketsController(IBasketRepository basketRepository)
     {
-        private readonly IBasketRepository _basketRepository;
-        private readonly IMapper _mapper;
+        _basketRepository = basketRepository;
+    }
 
-        public BasketsController(IBasketRepository basketRepository, IMapper mapper)
-        {
-            _basketRepository = basketRepository;
-            _mapper = mapper;
-        }
+    [HttpGet("{basketId}", Name = "GetBasket")]
+    public async Task<ActionResult<Basket>> Get(Guid basketId)
+    {
+        var basket = await _basketRepository.GetBasketById(basketId);
+        if (basket == null)
+            return NotFound();
 
-        [HttpGet("{basketId}", Name = "GetBasket")]
-        public async Task<ActionResult<Basket>> Get(Guid basketId)
-        {
-            var basket = await _basketRepository.GetBasketById(basketId);
-            if (basket == null)
-            {
-                return NotFound();
-            }
+        var result = basket.ToModel();
+        result.NumberOfItems = basket.BasketLines.Sum(bl => bl.TicketAmount);
+        return Ok(result);
+    }
 
-            var result = _mapper.Map<Basket>(basket);
-            result.NumberOfItems = basket.BasketLines.Sum(bl => bl.TicketAmount);
-            return Ok(result);
-        }
+    [HttpPost]
+    public async Task<ActionResult<Basket>> Post(BasketForCreation basketForCreation)
+    {
+        var basketEntity = basketForCreation.ToEntity();
 
-        [HttpPost]
-        public async Task<ActionResult<Basket>> Post(BasketForCreation basketForCreation)
-        {
-            var basketEntity = _mapper.Map<Entities.Basket>(basketForCreation);
+        _basketRepository.AddBasket(basketEntity);
+        await _basketRepository.SaveChanges();
 
-            _basketRepository.AddBasket(basketEntity);
-            await _basketRepository.SaveChanges();
-
-            var basketToReturn = _mapper.Map<Basket>(basketEntity);
-
-            return CreatedAtRoute(
-                "GetBasket",
-                new { basketId = basketEntity.BasketId },
-                basketToReturn);
-        }
+        return CreatedAtRoute(
+            "GetBasket",
+            new { basketId = basketEntity.BasketId },
+            basketEntity.ToModel());
     }
 }

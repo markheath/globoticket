@@ -14,8 +14,6 @@ builder.Services.AddDbContext<EventCatalogDbContext>(options =>
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IEventRepository, EventRepository>();
 
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
-
 builder.Services.AddControllers();
 
 builder.Services.AddApiVersioning(options =>
