@@ -1,22 +1,29 @@
 using GloboTicket.Messages;
 using MassTransit;
+using Microsoft.Extensions.Logging;
 
 namespace GloboTicket.Services.Payment;
 
-public class NewOrderHandler : IConsumer<PaymentRequestMessage>
+public partial class NewOrderHandler(ILogger<NewOrderHandler> logger) : IConsumer<PaymentRequestMessage>
 {
     public Task Consume(ConsumeContext<PaymentRequestMessage> context)
     {
-        Console.WriteLine($"Payment request received for basket id {context.Message.BasketId}.");
+        LogPaymentReceived(logger, context.Message.BasketId);
         return Task.CompletedTask;
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Payment request received for basket {BasketId}.")]
+    static partial void LogPaymentReceived(ILogger logger, Guid basketId);
 }
 
-public class NewOrderHandlerV2 : IConsumer<PaymentRequestMessageV2>
+public partial class NewOrderHandlerV2(ILogger<NewOrderHandlerV2> logger) : IConsumer<PaymentRequestMessageV2>
 {
     public Task Consume(ConsumeContext<PaymentRequestMessageV2> context)
     {
-        Console.WriteLine($"Payment request received for order id {context.Message.OrderId}.");
+        LogPaymentReceived(logger, context.Message.OrderId);
         return Task.CompletedTask;
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Payment request received for order {OrderId}.")]
+    static partial void LogPaymentReceived(ILogger logger, Guid orderId);
 }
