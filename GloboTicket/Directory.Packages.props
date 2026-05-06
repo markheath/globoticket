@@ -33,9 +33,9 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
 
-    <!-- Messaging -->
-    <PackageVersion Include="MassTransit" Version="9.1.0" />
-    <PackageVersion Include="MassTransit.RabbitMQ" Version="9.1.0" />
+    <!-- Messaging (pinned to 8.x, the last fully OSS line; v9+ requires a paid license) -->
+    <PackageVersion Include="MassTransit" Version="8.5.2" />
+    <PackageVersion Include="MassTransit.RabbitMQ" Version="8.5.2" />
 
     <!-- To be replaced in later PRs -->
     <PackageVersion Include="AutoMapper" Version="11.0.1" />
