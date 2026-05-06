@@ -13,11 +13,32 @@ a {
 }
 
 .btn-primary {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: #51b5b1;
+    --bs-btn-border-color: #51b5b1;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #3d8e8a;
+    --bs-btn-hover-border-color: #3d8e8a;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #3d8e8a;
+    --bs-btn-active-border-color: #3d8e8a;
     border-radius: 30px;
     background-color: #51b5b1;
+    border-color: #51b5b1;
+    color: #fff;
     padding: 10px 25px 10px 25px;
     font-size: 0.9em;
     font-family: opensans-bold;
+}
+
+a.btn-primary {
+    text-decoration: none;
+}
+
+a.btn-primary:hover {
+    color: #fff;
+    background-color: #3d8e8a;
+    border-color: #3d8e8a;
 }
 
 .filterButton {
