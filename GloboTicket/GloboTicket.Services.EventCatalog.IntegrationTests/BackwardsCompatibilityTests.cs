@@ -1,42 +1,75 @@
-using NUnit.Framework;
 using System.Text.Json;
+using GloboTicket.Services.EventCatalog.DbContexts;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Xunit;
 
-namespace GloboTicket.Services.EventCatalog.IntegrationTests
+namespace GloboTicket.Services.EventCatalog.IntegrationTests;
+
+public class BackwardsCompatibilityTests : IClassFixture<EventCatalogFactory>
 {
-    public class Tests
+    private readonly HttpClient _client;
+
+    public BackwardsCompatibilityTests(EventCatalogFactory factory)
     {
-        private HttpClient httpClient = null!;
+        _client = factory.CreateClient();
+    }
 
-        [SetUp]
-        public void Setup()
-        {
-            var catalogServiceUrl = Environment.GetEnvironmentVariable("CATALOG_SERVICE")
-                ?? "https://localhost:5001/";
-            httpClient = new HttpClient { BaseAddress = new Uri(catalogServiceUrl) };
-        }
+    [Fact]
+    public async Task Version1ClientsCanGetEvents()
+    {
+        var json = await _client.GetStringAsync("/api/events");
+        using var document = JsonDocument.Parse(json);
+        Assert.True(document.RootElement.GetArrayLength() > 0, "Got no events back");
+        var firstEvent = document.RootElement[0];
+        Assert.True(firstEvent.TryGetProperty("price", out _));
+        Assert.False(firstEvent.TryGetProperty("tickets", out _));
+    }
 
-        [Test]
-        public async Task Version1ClientsCanGetEvents()
-        {
-            var json = await httpClient.GetStringAsync("/api/events");
-            using var document = JsonDocument.Parse(json);
-            var events = document.RootElement;
-            Assert.That(events.GetArrayLength(), Is.GreaterThan(0), "Got no events back");
-            var firstEvent = events[0];
-            Assert.That(firstEvent.TryGetProperty("price", out _), Is.True);
-            Assert.That(firstEvent.TryGetProperty("tickets", out _), Is.False);
-        }
+    [Fact]
+    public async Task Version2ClientsCanGetEvents()
+    {
+        var json = await _client.GetStringAsync("/api/events?api-version=2.0");
+        using var document = JsonDocument.Parse(json);
+        Assert.True(document.RootElement.GetArrayLength() > 0, "Got no events back");
+        var firstEvent = document.RootElement[0];
+        Assert.False(firstEvent.TryGetProperty("price", out _));
+        Assert.True(firstEvent.TryGetProperty("tickets", out _));
+    }
+}
 
-        [Test]
-        public async Task Version2ClientsCanGetEvents()
+public class EventCatalogFactory : WebApplicationFactory<Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Testing");
+
+        builder.ConfigureServices(services =>
         {
-            var json = await httpClient.GetStringAsync("/api/events?api-version=2.0");
-            using var document = JsonDocument.Parse(json);
-            var events = document.RootElement;
-            Assert.That(events.GetArrayLength(), Is.GreaterThan(0), "Got no events back");
-            var firstEvent = events[0];
-            Assert.That(firstEvent.TryGetProperty("price", out _), Is.False);
-            Assert.That(firstEvent.TryGetProperty("tickets", out _), Is.True);
-        }
+            services.RemoveAll(typeof(DbContextOptions<EventCatalogDbContext>));
+
+            // Isolate the InMemory provider in its own service provider so it doesn't
+            // collide with the SqlServer services registered by Program.cs.
+            var inMemoryServices = new ServiceCollection()
+                .AddEntityFrameworkInMemoryDatabase()
+                .BuildServiceProvider();
+
+            services.AddDbContext<EventCatalogDbContext>(options =>
+                options.UseInMemoryDatabase("EventCatalogTests")
+                       .UseInternalServiceProvider(inMemoryServices));
+        });
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+        using var scope = host.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<EventCatalogDbContext>();
+        db.Database.EnsureCreated();
+        return host;
     }
 }

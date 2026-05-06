@@ -37,8 +37,11 @@ var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
-using (var scope = app.Services.CreateScope())
+// Apply migrations on startup. Tests opt out via the "Testing" environment
+// and seed their own (in-memory) database in the test fixture.
+if (!app.Environment.IsEnvironment("Testing"))
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<EventCatalogDbContext>();
     app.Logger.LogInformation("Applying EventCatalog migrations...");
     await db.Database.MigrateAsync();
@@ -62,3 +65,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;

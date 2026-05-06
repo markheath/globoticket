@@ -26,8 +26,9 @@ var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("Testing"))
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ShoppingBasketDbContext>();
     app.Logger.LogInformation("Applying ShoppingBasket migrations...");
     await db.Database.MigrateAsync();
