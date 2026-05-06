@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
+#nullable disable
+
 namespace GloboTicket.Services.EventCatalog.Migrations
 {
     [DbContext(typeof(EventCatalogDbContext))]
@@ -15,9 +17,10 @@ namespace GloboTicket.Services.EventCatalog.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "3.1.5")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128)
-                .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+
+            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
             modelBuilder.Entity("GloboTicket.Services.EventCatalog.Entities.Category", b =>
                 {
@@ -26,6 +29,7 @@ namespace GloboTicket.Services.EventCatalog.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("CategoryId");
@@ -57,6 +61,7 @@ namespace GloboTicket.Services.EventCatalog.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Artist")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("CategoryId")
@@ -66,12 +71,15 @@ namespace GloboTicket.Services.EventCatalog.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ImageUrl")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Price")
@@ -89,7 +97,7 @@ namespace GloboTicket.Services.EventCatalog.Migrations
                             EventId = new Guid("cfb88e29-4744-48c0-94fa-b25b92dea317"),
                             Artist = "John Egbert",
                             CategoryId = new Guid("cfb88e29-4744-48c0-94fa-b25b92dea314"),
-                            Date = new DateTime(2021, 2, 3, 12, 35, 47, 429, DateTimeKind.Local).AddTicks(6380),
+                            Date = new DateTime(2026, 11, 6, 20, 36, 53, 942, DateTimeKind.Local).AddTicks(4507),
                             Description = "Join John for his farwell tour across 15 continents. John really needs no introduction since he has already mesmerized the world with his banjo.",
                             ImageUrl = "/img/banjo.jpg",
                             Name = "John Egbert Live",
@@ -100,7 +108,7 @@ namespace GloboTicket.Services.EventCatalog.Migrations
                             EventId = new Guid("cfb88e29-4744-48c0-94fa-b25b92dea319"),
                             Artist = "Michael Johnson",
                             CategoryId = new Guid("cfb88e29-4744-48c0-94fa-b25b92dea314"),
-                            Date = new DateTime(2021, 5, 3, 12, 35, 47, 431, DateTimeKind.Local).AddTicks(9372),
+                            Date = new DateTime(2027, 2, 6, 20, 36, 53, 944, DateTimeKind.Local).AddTicks(7426),
                             Description = "Michael Johnson doesn't need an introduction. His 25 concert across the globe last year were seen by thousands. Can we add you to the list?",
                             ImageUrl = "/img/michael.jpg",
                             Name = "The State of Affairs: Michael Live!",
@@ -111,7 +119,7 @@ namespace GloboTicket.Services.EventCatalog.Migrations
                             EventId = new Guid("cfb88e29-4744-48c0-94fa-b25b92dea318"),
                             Artist = "Nick Sailor",
                             CategoryId = new Guid("cfb88e29-4744-48c0-94fa-b25b92dea315"),
-                            Date = new DateTime(2021, 4, 3, 12, 35, 47, 431, DateTimeKind.Local).AddTicks(9492),
+                            Date = new DateTime(2027, 1, 6, 20, 36, 53, 944, DateTimeKind.Local).AddTicks(7497),
                             Description = "The critics are over the moon and so will you after you've watched this sing and dance extravaganza written by Nick Sailor, the man from 'My dad and sister'.",
                             ImageUrl = "/img/musical.jpg",
                             Name = "To the Moon and Back",
@@ -129,6 +137,7 @@ namespace GloboTicket.Services.EventCatalog.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Price")
@@ -192,6 +201,8 @@ namespace GloboTicket.Services.EventCatalog.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("GloboTicket.Services.EventCatalog.Entities.Ticket", b =>
@@ -201,6 +212,18 @@ namespace GloboTicket.Services.EventCatalog.Migrations
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Event");
+                });
+
+            modelBuilder.Entity("GloboTicket.Services.EventCatalog.Entities.Category", b =>
+                {
+                    b.Navigation("Events");
+                });
+
+            modelBuilder.Entity("GloboTicket.Services.EventCatalog.Entities.Event", b =>
+                {
+                    b.Navigation("Tickets");
                 });
 #pragma warning restore 612, 618
         }

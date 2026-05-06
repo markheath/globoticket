@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
+#nullable disable
+
 namespace GloboTicket.Services.ShoppingBasket.Migrations
 {
     [DbContext(typeof(ShoppingBasketDbContext))]
@@ -15,9 +17,10 @@ namespace GloboTicket.Services.ShoppingBasket.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "3.1.5")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128)
-                .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+
+            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
             modelBuilder.Entity("GloboTicket.Services.ShoppingBasket.Entities.Basket", b =>
                 {
@@ -70,6 +73,7 @@ namespace GloboTicket.Services.ShoppingBasket.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("EventId");
@@ -90,6 +94,15 @@ namespace GloboTicket.Services.ShoppingBasket.Migrations
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Basket");
+
+                    b.Navigation("Event");
+                });
+
+            modelBuilder.Entity("GloboTicket.Services.ShoppingBasket.Entities.Basket", b =>
+                {
+                    b.Navigation("BasketLines");
                 });
 #pragma warning restore 612, 618
         }

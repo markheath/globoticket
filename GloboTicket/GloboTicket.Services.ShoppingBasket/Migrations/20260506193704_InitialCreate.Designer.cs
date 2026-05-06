@@ -7,19 +7,23 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
+#nullable disable
+
 namespace GloboTicket.Services.ShoppingBasket.Migrations
 {
     [DbContext(typeof(ShoppingBasketDbContext))]
-    [Migration("20200630142717_InitialMigration")]
-    partial class InitialMigration
+    [Migration("20260506193704_InitialCreate")]
+    partial class InitialCreate
     {
+        /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "3.1.5")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128)
-                .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+
+            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
             modelBuilder.Entity("GloboTicket.Services.ShoppingBasket.Entities.Basket", b =>
                 {
@@ -33,13 +37,6 @@ namespace GloboTicket.Services.ShoppingBasket.Migrations
                     b.HasKey("BasketId");
 
                     b.ToTable("Baskets");
-
-                    b.HasData(
-                        new
-                        {
-                            BasketId = new Guid("d28888e9-2ba9-473a-a40f-e38cb54f9b35"),
-                            UserId = new Guid("6c9fe94e-257a-42e2-a49c-1b216d4e81be")
-                        });
                 });
 
             modelBuilder.Entity("GloboTicket.Services.ShoppingBasket.Entities.BasketLine", b =>
@@ -54,6 +51,9 @@ namespace GloboTicket.Services.ShoppingBasket.Migrations
                     b.Property<Guid>("EventId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("Price")
+                        .HasColumnType("int");
+
                     b.Property<int>("TicketAmount")
                         .HasColumnType("int");
 
@@ -61,23 +61,27 @@ namespace GloboTicket.Services.ShoppingBasket.Migrations
 
                     b.HasIndex("BasketId");
 
-                    b.ToTable("BasketLines");
+                    b.HasIndex("EventId");
 
-                    b.HasData(
-                        new
-                        {
-                            BasketLineId = new Guid("75918bea-7a04-406e-bafd-51dc8b98816f"),
-                            BasketId = new Guid("d28888e9-2ba9-473a-a40f-e38cb54f9b35"),
-                            EventId = new Guid("e29f3df4-d9b4-4182-84dc-4289ac17c0c0"),
-                            TicketAmount = 3
-                        },
-                        new
-                        {
-                            BasketLineId = new Guid("bec71e6b-6b3d-444e-85d7-77bdb3988908"),
-                            BasketId = new Guid("d28888e9-2ba9-473a-a40f-e38cb54f9b35"),
-                            EventId = new Guid("39144996-8bad-4cb8-9029-125d88808377"),
-                            TicketAmount = 2
-                        });
+                    b.ToTable("BasketLines");
+                });
+
+            modelBuilder.Entity("GloboTicket.Services.ShoppingBasket.Entities.Event", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("EventId");
+
+                    b.ToTable("Events");
                 });
 
             modelBuilder.Entity("GloboTicket.Services.ShoppingBasket.Entities.BasketLine", b =>
@@ -87,6 +91,21 @@ namespace GloboTicket.Services.ShoppingBasket.Migrations
                         .HasForeignKey("BasketId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("GloboTicket.Services.ShoppingBasket.Entities.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Basket");
+
+                    b.Navigation("Event");
+                });
+
+            modelBuilder.Entity("GloboTicket.Services.ShoppingBasket.Entities.Basket", b =>
+                {
+                    b.Navigation("BasketLines");
                 });
 #pragma warning restore 612, 618
         }
