@@ -1,47 +1,42 @@
-using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using System;
-using System.Net.Http;
-using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace GloboTicket.Services.EventCatalog.IntegrationTests
 {
     public class Tests
     {
-        private HttpClient httpClient;
+        private HttpClient httpClient = null!;
+
         [SetUp]
         public void Setup()
         {
-            var catalogServiceUrl = Environment.GetEnvironmentVariable("CATALOG_SERVICE");
-            if (String.IsNullOrEmpty(catalogServiceUrl))
-            {
-                catalogServiceUrl = "https://localhost:5001/";
-            }
-            httpClient = new HttpClient();
-            httpClient.BaseAddress = new Uri(catalogServiceUrl);
+            var catalogServiceUrl = Environment.GetEnvironmentVariable("CATALOG_SERVICE")
+                ?? "https://localhost:5001/";
+            httpClient = new HttpClient { BaseAddress = new Uri(catalogServiceUrl) };
         }
 
         [Test]
         public async Task Version1ClientsCanGetEvents()
         {
             var json = await httpClient.GetStringAsync("/api/events");
-            var events = JArray.Parse(json);
-            Assert.That(events.Count, Is.GreaterThan(0), "Got no events back");
+            using var document = JsonDocument.Parse(json);
+            var events = document.RootElement;
+            Assert.That(events.GetArrayLength(), Is.GreaterThan(0), "Got no events back");
             var firstEvent = events[0];
-            Assert.IsNotNull(firstEvent["price"]);
-            Assert.IsNull(firstEvent["tickets"]);
+            Assert.That(firstEvent.TryGetProperty("price", out _), Is.True);
+            Assert.That(firstEvent.TryGetProperty("tickets", out _), Is.False);
         }
-
 
         [Test]
         public async Task Version2ClientsCanGetEvents()
         {
-            var result = await httpClient.GetStringAsync("/api/events?api-version=2.0");
-            var events = JArray.Parse(result);
-            Assert.That(events.Count, Is.GreaterThan(0), "Got no events back");
+            var json = await httpClient.GetStringAsync("/api/events?api-version=2.0");
+            using var document = JsonDocument.Parse(json);
+            var events = document.RootElement;
+            Assert.That(events.GetArrayLength(), Is.GreaterThan(0), "Got no events back");
             var firstEvent = events[0];
-            Assert.IsNull(firstEvent["price"]);
-            Assert.IsNotNull(firstEvent["tickets"]);
+            Assert.That(firstEvent.TryGetProperty("price", out _), Is.False);
+            Assert.That(firstEvent.TryGetProperty("tickets", out _), Is.True);
         }
     }
 }

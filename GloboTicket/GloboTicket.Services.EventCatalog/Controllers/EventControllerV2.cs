@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Asp.Versioning;
 using AutoMapper;
 using GloboTicket.Services.EventCatalog.Models.V2;
 using GloboTicket.Services.EventCatalog.Repositories;

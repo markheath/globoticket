@@ -1,10 +1,8 @@
+using Asp.Versioning;
 using GloboTicket.Services.EventCatalog.DbContexts;
 using GloboTicket.Services.EventCatalog.Repositories;
-using GloboTicket.Services.EventCatalog.Swagger;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Swashbuckle.AspNetCore.SwaggerGen;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,22 +15,21 @@ builder.Services.AddScoped<IEventRepository, EventRepository>();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 builder.Services.AddControllers();
-builder.Services.AddApiVersioning(o =>
+
+builder.Services.AddApiVersioning(options =>
 {
-    o.AssumeDefaultVersionWhenUnspecified = true;
-    o.DefaultApiVersion = new Microsoft.AspNetCore.Mvc.ApiVersion(1, 0);
-    o.ReportApiVersions = true;
-});
-builder.Services.AddVersionedApiExplorer(options =>
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new QueryStringApiVersionReader("api-version");
+}).AddApiExplorer(options =>
 {
     options.GroupNameFormat = "'v'VVV";
     options.SubstituteApiVersionInUrl = true;
 });
-builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
-builder.Services.AddSwaggerGen(options =>
-{
-    options.OperationFilter<SwaggerDefaultValues>();
-});
+
+builder.Services.AddOpenApi("v1");
+builder.Services.AddOpenApi("v2");
 
 var app = builder.Build();
 
@@ -43,17 +40,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseSwagger();
-app.UseSwaggerUI(options =>
+if (app.Environment.IsDevelopment())
 {
-    var provider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
-    foreach (var description in provider.ApiVersionDescriptions)
-    {
-        options.SwaggerEndpoint(
-            $"/swagger/{description.GroupName}/swagger.json",
-            description.GroupName.ToUpperInvariant());
-    }
-});
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
 
 app.UseAuthorization();
 app.MapControllers();

@@ -2,7 +2,7 @@ using GloboTicket.Services.ShoppingBasket.DbContexts;
 using GloboTicket.Services.ShoppingBasket.Repositories;
 using GloboTicket.Services.ShoppingBasket.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,10 +18,7 @@ builder.Services.AddHttpClient<IEventCatalogService, EventCatalogService>(c =>
 builder.Services.AddDbContext<ShoppingBasketDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Shopping Basket API", Version = "v1" });
-});
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
@@ -32,11 +29,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Shopping Basket API V1");
-});
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
 
 app.UseAuthorization();
 app.MapControllers();
