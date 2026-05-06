@@ -37,12 +37,16 @@ var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<EventCatalogDbContext>();
+    app.Logger.LogInformation("Applying EventCatalog migrations...");
+    await db.Database.MigrateAsync();
+    app.Logger.LogInformation("EventCatalog migrations applied.");
+}
+
 if (app.Environment.IsDevelopment())
 {
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<EventCatalogDbContext>();
-    await db.Database.MigrateAsync();
-
     app.UseDeveloperExceptionPage();
 }
 

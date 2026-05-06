@@ -26,12 +26,16 @@ var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ShoppingBasketDbContext>();
+    app.Logger.LogInformation("Applying ShoppingBasket migrations...");
+    await db.Database.MigrateAsync();
+    app.Logger.LogInformation("ShoppingBasket migrations applied.");
+}
+
 if (app.Environment.IsDevelopment())
 {
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<ShoppingBasketDbContext>();
-    await db.Database.MigrateAsync();
-
     app.UseDeveloperExceptionPage();
 }
 
