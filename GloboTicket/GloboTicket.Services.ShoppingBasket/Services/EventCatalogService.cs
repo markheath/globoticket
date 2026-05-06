@@ -1,24 +1,11 @@
-﻿using System;
-using System.Net.Http;
-using System.Threading.Tasks;
+using System.Net.Http.Json;
 using GloboTicket.Services.ShoppingBasket.Entities;
-using GloboTicket.Services.ShoppingBasket.Extensions;
 
-namespace GloboTicket.Services.ShoppingBasket.Services
+namespace GloboTicket.Services.ShoppingBasket.Services;
+
+public class EventCatalogService(HttpClient client) : IEventCatalogService
 {
-    public class EventCatalogService : IEventCatalogService
-    {
-        private readonly HttpClient client;
-
-        public EventCatalogService(HttpClient client)
-        {
-            this.client = client;
-        }
-
-        public async Task<Event> GetEvent(Guid id)
-        {
-            var response = await client.GetAsync($"/api/events/{id}");
-            return await response.ReadContentAs<Event>();
-        }
-    }
+    public async Task<Event> GetEvent(Guid id) =>
+        await client.GetFromJsonAsync<Event>($"/api/events/{id}")
+        ?? throw new InvalidOperationException($"Event {id} not found in catalog.");
 }
