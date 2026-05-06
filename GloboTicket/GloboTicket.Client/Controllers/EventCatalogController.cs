@@ -26,14 +26,20 @@ namespace GloboTicket.Web.Controllers
         {
             var currentBasketId = Request.Cookies.GetCurrentBasketId(settings);
 
-            var getBasket = currentBasketId == Guid.Empty ? Task.FromResult<Basket>(null) :
+            var getBasket = currentBasketId == Guid.Empty ? Task.FromResult<Basket?>(null) :
                 shoppingBasketService.GetBasket(currentBasketId);
             var getCategories = eventCatalogService.GetCategories();
             var getEvents = categoryId == Guid.Empty ? eventCatalogService.GetAll() :
                 eventCatalogService.GetByCategoryId(categoryId);
-            await Task.WhenAll(new Task[] { getBasket, getCategories, getEvents });
+            await Task.WhenAll(getBasket, getCategories, getEvents);
 
-            var numberOfItems = getBasket.Result == null ? 0 : getBasket.Result.NumberOfItems;
+            // Stale cookie referencing a basket that no longer exists (e.g. after a DB reset)
+            if (currentBasketId != Guid.Empty && getBasket.Result is null)
+            {
+                Response.Cookies.Delete(settings.BasketIdCookieName);
+            }
+
+            var numberOfItems = getBasket.Result?.NumberOfItems ?? 0;
 
             return View(
                 new EventListModel

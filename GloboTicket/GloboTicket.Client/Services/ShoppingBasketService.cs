@@ -33,21 +33,24 @@ namespace GloboTicket.Web.Services
             return await response.ReadContentAs<BasketLine>();
         }
 
-        public async Task<Basket> GetBasket(Guid basketId)
+        public async Task<Basket?> GetBasket(Guid basketId)
         {
             if (basketId == Guid.Empty)
                 return null;
             var response = await client.GetAsync($"/api/baskets/{basketId}");
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return null;
             return await response.ReadContentAs<Basket>();
         }
 
         public async Task<IEnumerable<BasketLine>> GetLinesForBasket(Guid basketId)
         {
             if (basketId == Guid.Empty)
-                return new BasketLine[0];
+                return [];
             var response = await client.GetAsync($"/api/baskets/{basketId}/basketLines");
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return [];
             return await response.ReadContentAs<BasketLine[]>();
-
         }
 
         public async Task UpdateLine(Guid basketId, BasketLineForUpdate basketLineForUpdate)
