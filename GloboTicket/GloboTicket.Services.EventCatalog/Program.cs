@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 builder.Services.AddDbContext<EventCatalogDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("eventcatalog")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("eventcatalogdb")));
 
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IEventRepository, EventRepository>();

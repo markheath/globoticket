@@ -1,8 +1,8 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 var sql = builder.AddSqlServer("sql");
-var eventCatalogDb = sql.AddDatabase("eventcatalog");
-var basketDb = sql.AddDatabase("basket");
+var eventCatalogDb = sql.AddDatabase("eventcatalogdb");
+var basketDb = sql.AddDatabase("basketdb");
 
 var storage = builder.AddAzureStorage("storage").RunAsEmulator();
 var queues = storage.AddQueues("queues");

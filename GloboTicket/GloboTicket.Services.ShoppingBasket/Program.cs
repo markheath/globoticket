@@ -18,7 +18,7 @@ builder.Services.AddHttpClient<IEventCatalogService, EventCatalogService>(c =>
     c.BaseAddress = new Uri("https+http://eventcatalog"));
 
 builder.Services.AddDbContext<ShoppingBasketDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("basket")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("basketdb")));
 
 builder.Services.AddOpenApi();
 
