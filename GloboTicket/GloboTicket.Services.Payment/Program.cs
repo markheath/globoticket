@@ -4,9 +4,11 @@ using Rebus.Activation;
 using Rebus.Config;
 
 var builder = Host.CreateApplicationBuilder(args);
+builder.AddServiceDefaults();
+
 var host = builder.Build();
 
-var storageAccount = CloudStorageAccount.Parse(builder.Configuration["AzureQueues:ConnectionString"]);
+var storageAccount = CloudStorageAccount.Parse(builder.Configuration.GetConnectionString("queues"));
 
 using var activator = new BuiltinHandlerActivator();
 activator.Register(() => new NewOrderHandler());

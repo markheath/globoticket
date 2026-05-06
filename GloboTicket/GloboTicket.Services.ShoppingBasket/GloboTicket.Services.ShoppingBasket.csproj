@@ -20,4 +20,8 @@
     <PackageReference Include="Scalar.AspNetCore" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\GloboTicket.ServiceDefaults\GloboTicket.ServiceDefaults.csproj" />
+  </ItemGroup>
+
 </Project>

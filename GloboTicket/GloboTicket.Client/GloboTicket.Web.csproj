@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GloboTicket.Messages\GloboTicket.Messages.csproj" />
+    <ProjectReference Include="..\GloboTicket.ServiceDefaults\GloboTicket.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

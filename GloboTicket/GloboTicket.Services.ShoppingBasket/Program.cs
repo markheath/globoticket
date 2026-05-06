@@ -6,6 +6,8 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
@@ -13,17 +15,23 @@ builder.Services.AddScoped<IBasketRepository, BasketRepository>();
 builder.Services.AddScoped<IBasketLinesRepository, BasketLinesRepository>();
 builder.Services.AddScoped<IEventRepository, EventRepository>();
 builder.Services.AddHttpClient<IEventCatalogService, EventCatalogService>(c =>
-    c.BaseAddress = new Uri(builder.Configuration["ApiConfigs:EventCatalog:Uri"]!));
+    c.BaseAddress = new Uri("https+http://eventcatalog"));
 
 builder.Services.AddDbContext<ShoppingBasketDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("basket")));
 
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+app.MapDefaultEndpoints();
+
 if (app.Environment.IsDevelopment())
 {
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ShoppingBasketDbContext>();
+    await db.Database.MigrateAsync();
+
     app.UseDeveloperExceptionPage();
 }
 

@@ -8,27 +8,32 @@ using Rebus.ServiceProvider;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 var mvcBuilder = builder.Services.AddControllersWithViews();
 if (builder.Environment.IsDevelopment())
     mvcBuilder.AddRazorRuntimeCompilation();
 
 builder.Services.AddHttpClient<IEventCatalogService, EventCatalogService>(c =>
-    c.BaseAddress = new Uri(builder.Configuration["ApiConfigs:EventCatalog:Uri"]!));
+    c.BaseAddress = new Uri("https+http://eventcatalog"));
 builder.Services.AddHttpClient<IShoppingBasketService, ShoppingBasketService>(c =>
-    c.BaseAddress = new Uri(builder.Configuration["ApiConfigs:ShoppingBasket:Uri"]!));
+    c.BaseAddress = new Uri("https+http://basket"));
 
 builder.Services.AddSingleton<Settings>();
 
-var storageAccount = CloudStorageAccount.Parse(builder.Configuration["AzureQueues:ConnectionString"]);
+var storageAccount = CloudStorageAccount.Parse(builder.Configuration.GetConnectionString("queues"));
+var queueName = builder.Configuration["AzureQueues:QueueName"];
 
 builder.Services.AddRebus(c => c
     .Transport(t => t.UseAzureStorageQueuesAsOneWayClient(storageAccount))
     .Routing(r => r.TypeBased()
-        .Map<PaymentRequestMessage>(builder.Configuration["AzureQueues:QueueName"])
-        .Map<PaymentRequestMessageV2>(builder.Configuration["AzureQueues:QueueName"]))
+        .Map<PaymentRequestMessage>(queueName)
+        .Map<PaymentRequestMessageV2>(queueName))
 );
 
 var app = builder.Build();
+
+app.MapDefaultEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
