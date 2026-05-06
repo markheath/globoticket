@@ -1,29 +1,18 @@
-using System;
+using GloboTicket.Services.Payment;
 using Microsoft.Azure.Storage;
-using Microsoft.Extensions.Configuration;
 using Rebus.Activation;
 using Rebus.Config;
 
-namespace GloboTicket.Services.Payment
-{
-    public class Program
-    {
-        public static void Main()
-        {
-            var config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
+var builder = Host.CreateApplicationBuilder(args);
+var host = builder.Build();
 
-            var storageAccount = CloudStorageAccount.Parse(config["AzureQueues:ConnectionString"]);
+var storageAccount = CloudStorageAccount.Parse(builder.Configuration["AzureQueues:ConnectionString"]);
 
-            using var activator = new BuiltinHandlerActivator();
-            activator.Register(() => new NewOrderHandler());
-            activator.Register(() => new NewOrderHandlerV2());
-            Configure.With(activator)
-                .Transport(t => t.UseAzureStorageQueues(storageAccount, config["AzureQueues:QueueName"]))
-                .Start();
+using var activator = new BuiltinHandlerActivator();
+activator.Register(() => new NewOrderHandler());
+activator.Register(() => new NewOrderHandlerV2());
+Configure.With(activator)
+    .Transport(t => t.UseAzureStorageQueues(storageAccount, builder.Configuration["AzureQueues:QueueName"]))
+    .Start();
 
-            Console.WriteLine("Listening for new orders..");
-            Console.WriteLine("Press enter to quit");
-            Console.ReadLine();
-        }
-    }
-}
+await host.RunAsync();
