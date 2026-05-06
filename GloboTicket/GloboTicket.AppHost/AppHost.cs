@@ -4,10 +4,7 @@ var sql = builder.AddSqlServer("sql");
 var eventCatalogDb = sql.AddDatabase("eventcatalogdb");
 var basketDb = sql.AddDatabase("basketdb");
 
-var storage = builder.AddAzureStorage("storage").RunAsEmulator();
-var queues = storage.AddQueues("queues");
-
-const string paymentQueueName = "paymentrequests";
+var rabbit = builder.AddRabbitMQ("rabbitmq");
 
 var eventCatalog = builder.AddProject<Projects.GloboTicket_Services_EventCatalog>("eventcatalog")
     .WithReference(eventCatalogDb)
@@ -20,16 +17,15 @@ var basket = builder.AddProject<Projects.GloboTicket_Services_ShoppingBasket>("b
     .WaitFor(eventCatalog);
 
 builder.AddProject<Projects.GloboTicket_Services_Payment>("payment")
-    .WithReference(queues)
-    .WithEnvironment("AzureQueues__QueueName", paymentQueueName)
-    .WaitFor(queues);
+    .WithReference(rabbit)
+    .WaitFor(rabbit);
 
 builder.AddProject<Projects.GloboTicket_Web>("web")
     .WithReference(eventCatalog)
     .WithReference(basket)
-    .WithReference(queues)
-    .WithEnvironment("AzureQueues__QueueName", paymentQueueName)
+    .WithReference(rabbit)
     .WaitFor(eventCatalog)
-    .WaitFor(basket);
+    .WaitFor(basket)
+    .WaitFor(rabbit);
 
 builder.Build().Run();

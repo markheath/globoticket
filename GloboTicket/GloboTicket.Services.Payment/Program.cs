@@ -1,20 +1,19 @@
 using GloboTicket.Services.Payment;
-using Microsoft.Azure.Storage;
-using Rebus.Activation;
-using Rebus.Config;
+using MassTransit;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.AddServiceDefaults();
 
-var host = builder.Build();
+builder.Services.AddMassTransit(x =>
+{
+    x.AddConsumer<NewOrderHandler>();
+    x.AddConsumer<NewOrderHandlerV2>();
 
-var storageAccount = CloudStorageAccount.Parse(builder.Configuration.GetConnectionString("queues"));
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host(builder.Configuration.GetConnectionString("rabbitmq")!);
+        cfg.ConfigureEndpoints(context);
+    });
+});
 
-using var activator = new BuiltinHandlerActivator();
-activator.Register(() => new NewOrderHandler());
-activator.Register(() => new NewOrderHandlerV2());
-Configure.With(activator)
-    .Transport(t => t.UseAzureStorageQueues(storageAccount, builder.Configuration["AzureQueues:QueueName"]))
-    .Start();
-
-await host.RunAsync();
+await builder.Build().RunAsync();

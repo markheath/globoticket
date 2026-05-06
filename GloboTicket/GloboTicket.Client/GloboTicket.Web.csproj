@@ -10,9 +10,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" />
-    <PackageReference Include="Rebus.AzureQueues" />
-    <PackageReference Include="Rebus.ServiceProvider" />
   </ItemGroup>
 
   <ItemGroup>

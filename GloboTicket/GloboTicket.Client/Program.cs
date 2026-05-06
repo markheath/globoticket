@@ -1,10 +1,6 @@
-using GloboTicket.Messages;
 using GloboTicket.Web.Models;
 using GloboTicket.Web.Services;
-using Microsoft.Azure.Storage;
-using Rebus.Config;
-using Rebus.Routing.TypeBased;
-using Rebus.ServiceProvider;
+using MassTransit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,15 +17,13 @@ builder.Services.AddHttpClient<IShoppingBasketService, ShoppingBasketService>(c 
 
 builder.Services.AddSingleton<Settings>();
 
-var storageAccount = CloudStorageAccount.Parse(builder.Configuration.GetConnectionString("queues"));
-var queueName = builder.Configuration["AzureQueues:QueueName"];
-
-builder.Services.AddRebus(c => c
-    .Transport(t => t.UseAzureStorageQueuesAsOneWayClient(storageAccount))
-    .Routing(r => r.TypeBased()
-        .Map<PaymentRequestMessage>(queueName)
-        .Map<PaymentRequestMessageV2>(queueName))
-);
+builder.Services.AddMassTransit(x =>
+{
+    x.UsingRabbitMq((_, cfg) =>
+    {
+        cfg.Host(builder.Configuration.GetConnectionString("rabbitmq")!);
+    });
+});
 
 var app = builder.Build();
 
@@ -47,7 +41,6 @@ else
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.Services.UseRebus();
 
 app.UseAuthorization();
 
