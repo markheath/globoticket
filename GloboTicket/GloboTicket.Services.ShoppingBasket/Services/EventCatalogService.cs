@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using GloboTicket.Services.ShoppingBasket.Entities;
 
 namespace GloboTicket.Services.ShoppingBasket.Services;

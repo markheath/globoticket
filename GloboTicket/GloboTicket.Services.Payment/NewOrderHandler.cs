@@ -1,6 +1,5 @@
 using GloboTicket.Messages;
 using MassTransit;
-using Microsoft.Extensions.Logging;
 
 namespace GloboTicket.Services.Payment;
 

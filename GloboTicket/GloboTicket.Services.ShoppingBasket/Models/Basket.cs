@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace GloboTicket.Services.ShoppingBasket.Models
+﻿namespace GloboTicket.Services.ShoppingBasket.Models
 {
     public class Basket
     {        

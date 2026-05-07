@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using GloboTicket.Web.Models.Api;
 
 namespace GloboTicket.Web.Services;

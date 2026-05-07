@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using GloboTicket.Web.Extensions;
+﻿using GloboTicket.Web.Extensions;
 using GloboTicket.Web.Models;
 using GloboTicket.Web.Models.Api;
 using GloboTicket.Web.Models.View;

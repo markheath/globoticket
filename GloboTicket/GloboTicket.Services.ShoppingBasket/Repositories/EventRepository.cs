@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using GloboTicket.Services.ShoppingBasket.DbContexts;
+﻿using GloboTicket.Services.ShoppingBasket.DbContexts;
 using GloboTicket.Services.ShoppingBasket.Entities;
 using Microsoft.EntityFrameworkCore;
 

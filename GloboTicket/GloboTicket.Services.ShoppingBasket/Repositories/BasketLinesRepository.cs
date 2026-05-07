@@ -1,10 +1,6 @@
 ﻿using GloboTicket.Services.ShoppingBasket.DbContexts;
 using GloboTicket.Services.ShoppingBasket.Entities;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace GloboTicket.Services.ShoppingBasket.Repositories
 {

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace GloboTicket.Messages
+﻿namespace GloboTicket.Messages
 {
     public class PaymentRequestMessage
     {

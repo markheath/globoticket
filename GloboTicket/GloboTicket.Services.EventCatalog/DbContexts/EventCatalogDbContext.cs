@@ -1,5 +1,4 @@
-﻿using System;
-using GloboTicket.Services.EventCatalog.Entities;
+﻿using GloboTicket.Services.EventCatalog.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace GloboTicket.Services.EventCatalog.DbContexts

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace GloboTicket.Web.Models
+﻿namespace GloboTicket.Web.Models
 {
     public class Settings
     {
