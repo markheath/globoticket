@@ -126,6 +126,152 @@ namespace GloboTicket.Services.EventCatalog.DbContexts
                 Price = 190,
                 TicketId = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA31F}")
             });
+
+            var aishaPatelGuid = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA320}");
+            var mayaOkaforGuid = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA321}");
+            var sunlightAvenueGuid = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA322}");
+            var lighthouseGuid = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA323}");
+            var lettersGuid = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA324}");
+
+            modelBuilder.Entity<Event>().HasData(new Event
+            {
+                EventId = aishaPatelGuid,
+                Name = "An Evening with Aisha Patel",
+                Price = 70,
+                Artist = "Aisha Patel",
+                Date = new DateTime(2027, 3, 14),
+                Description = "Aisha Patel returns to the city stage for one night only, blending classical violin with the rhythms of her South-Asian heritage. A warm, intimate evening that has sold out venues from London to Singapore.",
+                ImageUrl = "/img/aisha.jpg",
+                CategoryId = concertGuid
+            });
+
+            modelBuilder.Entity<Ticket>().HasData(new Ticket
+            {
+                EventId = aishaPatelGuid,
+                Name = "Standard",
+                Price = 70,
+                TicketId = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA325}")
+            });
+
+            modelBuilder.Entity<Ticket>().HasData(new Ticket
+            {
+                EventId = aishaPatelGuid,
+                Name = "Premium",
+                Price = 110,
+                TicketId = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA326}")
+            });
+
+            modelBuilder.Entity<Event>().HasData(new Event
+            {
+                EventId = mayaOkaforGuid,
+                Name = "Midnight Sessions with Maya Okafor",
+                Price = 80,
+                Artist = "Maya Okafor",
+                Date = new DateTime(2027, 5, 22),
+                Description = "Three-time Grammy nominee Maya Okafor brings her signature blend of jazz, soul and contemporary R&B to the headline stage. Expect new material from her upcoming album alongside the songs you already love.",
+                ImageUrl = "/img/maya.jpg",
+                CategoryId = concertGuid
+            });
+
+            modelBuilder.Entity<Ticket>().HasData(new Ticket
+            {
+                EventId = mayaOkaforGuid,
+                Name = "Standard",
+                Price = 80,
+                TicketId = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA327}")
+            });
+
+            modelBuilder.Entity<Ticket>().HasData(new Ticket
+            {
+                EventId = mayaOkaforGuid,
+                Name = "Premium",
+                Price = 130,
+                TicketId = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA328}")
+            });
+
+            modelBuilder.Entity<Event>().HasData(new Event
+            {
+                EventId = sunlightAvenueGuid,
+                Name = "Sunlight Avenue",
+                Price = 120,
+                Artist = "Priya Raman",
+                Date = new DateTime(2027, 7, 4),
+                Description = "A vibrant new musical from composer Priya Raman following four neighbours over one transformative summer. Critics have called it the freshest score Broadway has heard in years.",
+                ImageUrl = "/img/sunlight.jpg",
+                CategoryId = musicalGuid
+            });
+
+            modelBuilder.Entity<Ticket>().HasData(new Ticket
+            {
+                EventId = sunlightAvenueGuid,
+                Name = "Standard",
+                Price = 120,
+                TicketId = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA329}")
+            });
+
+            modelBuilder.Entity<Ticket>().HasData(new Ticket
+            {
+                EventId = sunlightAvenueGuid,
+                Name = "Premium",
+                Price = 180,
+                TicketId = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA32A}")
+            });
+
+            modelBuilder.Entity<Event>().HasData(new Event
+            {
+                EventId = lighthouseGuid,
+                Name = "The Lighthouse Keeper's Daughter",
+                Price = 55,
+                Artist = "Helena Marsh",
+                Date = new DateTime(2027, 9, 12),
+                Description = "Helena Marsh's quietly devastating two-hander has won this year's Olivier Award for Best New Play. A lighthouse, a long-kept secret, and a daughter returning home after twenty years away.",
+                ImageUrl = "/img/lighthouse.jpg",
+                CategoryId = playGuid
+            });
+
+            modelBuilder.Entity<Ticket>().HasData(new Ticket
+            {
+                EventId = lighthouseGuid,
+                Name = "Standard",
+                Price = 55,
+                TicketId = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA32B}")
+            });
+
+            modelBuilder.Entity<Ticket>().HasData(new Ticket
+            {
+                EventId = lighthouseGuid,
+                Name = "Premium",
+                Price = 90,
+                TicketId = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA32C}")
+            });
+
+            modelBuilder.Entity<Event>().HasData(new Event
+            {
+                EventId = lettersGuid,
+                Name = "Letters from the Border",
+                Price = 60,
+                Artist = "Kenji Tanaka",
+                Date = new DateTime(2027, 10, 30),
+                Description = "Kenji Tanaka's celebrated drama, translated into eleven languages, makes its long-awaited debut on the main stage. A correspondence between two strangers across a closed border, and what happens when the border finally opens.",
+                ImageUrl = "/img/letters.jpg",
+                CategoryId = playGuid
+            });
+
+            modelBuilder.Entity<Ticket>().HasData(new Ticket
+            {
+                EventId = lettersGuid,
+                Name = "Standard",
+                Price = 60,
+                TicketId = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA32D}")
+            });
+
+            modelBuilder.Entity<Ticket>().HasData(new Ticket
+            {
+                EventId = lettersGuid,
+                Name = "Premium",
+                Price = 95,
+                TicketId = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA32E}")
+            });
         }
     }
 
