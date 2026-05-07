@@ -17,6 +17,14 @@ namespace GloboTicket.Services.EventCatalog.DbContexts
         {
             base.OnModelCreating(modelBuilder);
 
+            // Event.Date is a calendar date ("the show is on this day"), not
+            // an instant in time. Npgsql maps DateTime to "timestamp with time
+            // zone" by default, which rejects DateTimeKind.Unspecified values
+            // — so we map this column to "timestamp without time zone" instead.
+            modelBuilder.Entity<Event>()
+                .Property(e => e.Date)
+                .HasColumnType("timestamp without time zone");
+
             var concertGuid = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA314}");
             var musicalGuid = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA315}");
             var playGuid = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA316}");

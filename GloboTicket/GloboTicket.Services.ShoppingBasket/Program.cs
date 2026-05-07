@@ -2,6 +2,7 @@ using GloboTicket.Services.ShoppingBasket.DbContexts;
 using GloboTicket.Services.ShoppingBasket.Repositories;
 using GloboTicket.Services.ShoppingBasket.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,7 +18,10 @@ builder.Services.AddHttpClient<IEventCatalogService, EventCatalogService>(c =>
     c.BaseAddress = new Uri("https+http://eventcatalog"));
 
 builder.Services.AddDbContext<ShoppingBasketDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("basketdb")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("basketdb"))
+        // See EventCatalog Program.cs for the rationale — same Npgsql
+        // first-run probe noise, same fix.
+        .ConfigureWarnings(w => w.Log((RelationalEventId.CommandError, LogLevel.Debug))));
 
 builder.Services.AddOpenApi();
 

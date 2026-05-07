@@ -2,6 +2,7 @@ using Asp.Versioning;
 using GloboTicket.Services.EventCatalog.DbContexts;
 using GloboTicket.Services.EventCatalog.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,7 +10,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 builder.Services.AddDbContext<EventCatalogDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("eventcatalogdb")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("eventcatalogdb"))
+        // Npgsql's migration-history existence check is a try-SELECT-catch.
+        // EF logs the failed SELECT at Error before the catch handles it, so
+        // every fresh-DB startup shows a spurious error in the Aspire
+        // dashboard. Demoting CommandError to Debug suppresses that noise.
+        // Real command failures still throw exceptions and surface via HTTP
+        // responses + OpenTelemetry traces.
+        .ConfigureWarnings(w => w.Log((RelationalEventId.CommandError, LogLevel.Debug))));
 
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IEventRepository, EventRepository>();

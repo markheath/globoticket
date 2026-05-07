@@ -1,8 +1,13 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var sql = builder.AddSqlServer("sql");
-var eventCatalogDb = sql.AddDatabase("eventcatalogdb");
-var basketDb = sql.AddDatabase("basketdb");
+// Postgres starts in a couple of seconds, so we deliberately don't use
+// WithDataVolume() here — every AppHost run gets a clean database and the
+// migrations + seed data re-apply on each start. That's slightly slower
+// per-run but avoids the "half-applied migration on disk" class of bug
+// that comes with persisted volumes during demo iteration.
+var postgres = builder.AddPostgres("postgres");
+var eventCatalogDb = postgres.AddDatabase("eventcatalogdb");
+var basketDb = postgres.AddDatabase("basketdb");
 
 var rabbit = builder.AddRabbitMQ("rabbitmq");
 

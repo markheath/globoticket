@@ -53,7 +53,7 @@ public class EventCatalogFactory : WebApplicationFactory<Program>
             services.RemoveAll(typeof(DbContextOptions<EventCatalogDbContext>));
 
             // Isolate the InMemory provider in its own service provider so it doesn't
-            // collide with the SqlServer services registered by Program.cs.
+            // collide with the Npgsql services registered by Program.cs.
             var inMemoryServices = new ServiceCollection()
                 .AddEntityFrameworkInMemoryDatabase()
                 .BuildServiceProvider();
