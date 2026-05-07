@@ -1,49 +1,56 @@
 using GloboTicket.Messages;
-using MassTransit;
-using MassTransit.Testing;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Wolverine;
+using Wolverine.Tracking;
 using Xunit;
 
 namespace GloboTicket.Services.Payment.Tests;
 
+// These tests are the contract guard for the message-versioning lesson: if
+// someone deletes NewOrderHandler (V1) thinking V2 has fully replaced it,
+// the V1 test will fail, because TrackActivity will time out waiting for a
+// handler that no longer exists.
+//
+// No RabbitMQ transport is configured here. Wolverine still routes messages
+// to handlers in-process — the transport only matters once you cross a
+// process boundary — so these tests run in a fraction of a second without
+// any container.
 public class PaymentBackwardsCompatibilityTests
 {
     [Fact]
     public async Task V1_publishers_are_consumed_by_NewOrderHandler()
     {
-        await using var provider = BuildHarness();
-        var harness = provider.GetRequiredService<ITestHarness>();
-        await harness.Start();
+        using var host = await BuildHost();
 
-        await harness.Bus.Publish(new PaymentRequestMessage { BasketId = Guid.NewGuid() });
+        var session = await host.TrackActivity()
+            .ExecuteAndWaitAsync(bus =>
+                bus.PublishAsync(new PaymentRequestMessage { BasketId = Guid.NewGuid() }));
 
-        Assert.True(await harness.Consumed.Any<PaymentRequestMessage>());
-
-        var consumerHarness = provider.GetRequiredService<IConsumerTestHarness<NewOrderHandler>>();
-        Assert.True(await consumerHarness.Consumed.Any<PaymentRequestMessage>());
+        Assert.Single(session.Executed.MessagesOf<PaymentRequestMessage>());
     }
 
     [Fact]
     public async Task V2_publishers_are_consumed_by_NewOrderHandlerV2()
     {
-        await using var provider = BuildHarness();
-        var harness = provider.GetRequiredService<ITestHarness>();
-        await harness.Start();
+        using var host = await BuildHost();
 
-        await harness.Bus.Publish(new PaymentRequestMessageV2 { OrderId = Guid.NewGuid() });
+        var session = await host.TrackActivity()
+            .ExecuteAndWaitAsync(bus =>
+                bus.PublishAsync(new PaymentRequestMessageV2 { OrderId = Guid.NewGuid() }));
 
-        Assert.True(await harness.Consumed.Any<PaymentRequestMessageV2>());
-
-        var consumerHarness = provider.GetRequiredService<IConsumerTestHarness<NewOrderHandlerV2>>();
-        Assert.True(await consumerHarness.Consumed.Any<PaymentRequestMessageV2>());
+        Assert.Single(session.Executed.MessagesOf<PaymentRequestMessageV2>());
     }
 
-    private static ServiceProvider BuildHarness() =>
-        new ServiceCollection()
-            .AddMassTransitTestHarness(x =>
-            {
-                x.AddConsumer<NewOrderHandler>();
-                x.AddConsumer<NewOrderHandlerV2>();
-            })
-            .BuildServiceProvider(true);
+    // Discovery is what makes the magic work: we point Wolverine at the
+    // Payment assembly and it scans for handler classes — same as the real
+    // service does at startup. Nothing else has to be registered.
+    private static async Task<IHost> BuildHost()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.UseWolverine(opts =>
+            opts.Discovery.IncludeAssembly(typeof(NewOrderHandler).Assembly));
+        var host = builder.Build();
+        await host.StartAsync();
+        return host;
+    }
 }

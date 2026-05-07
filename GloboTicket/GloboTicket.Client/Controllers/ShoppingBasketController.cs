@@ -4,18 +4,18 @@ using GloboTicket.Web.Models;
 using GloboTicket.Web.Models.Api;
 using GloboTicket.Web.Models.View;
 using GloboTicket.Web.Services;
-using MassTransit;
 using Microsoft.AspNetCore.Mvc;
+using Wolverine;
 
 namespace GloboTicket.Web.Controllers
 {
     public class ShoppingBasketController : Controller
     {
         private readonly IShoppingBasketService basketService;
-        private readonly IBus bus;
+        private readonly IMessageBus bus;
         private readonly Settings settings;
 
-        public ShoppingBasketController(IShoppingBasketService basketService, IBus bus, Settings settings)
+        public ShoppingBasketController(IShoppingBasketService basketService, IMessageBus bus, Settings settings)
         {
             this.basketService = basketService;
             this.bus = bus;
@@ -68,8 +68,11 @@ namespace GloboTicket.Web.Controllers
         public async Task<IActionResult> Pay()
         {
             var basketId = Request.Cookies.GetCurrentBasketId(settings);
-            //await bus.Publish(new PaymentRequestMessage { BasketId = basketId });
-            await bus.Publish(new PaymentRequestMessageV2 { OrderId = basketId });
+            // PublishAsync is fire-and-forget pub/sub. Wolverine looks at the
+            // runtime type of the argument, finds the conventional exchange for
+            // PaymentRequestMessageV2, and the Payment service's queue (bound to
+            // that exchange by the same convention) picks it up.
+            await bus.PublishAsync(new PaymentRequestMessageV2 { OrderId = basketId });
             return View("Thanks");
         }
     }

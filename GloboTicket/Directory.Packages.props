@@ -36,9 +36,9 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
 
-    <!-- Messaging (pinned to 8.x, the last fully OSS line; v9+ requires a paid license) -->
-    <PackageVersion Include="MassTransit" Version="8.5.2" />
-    <PackageVersion Include="MassTransit.RabbitMQ" Version="8.5.2" />
+    <!-- Messaging: Wolverine (MIT, JasperFx). Replaces MassTransit, whose v9+ went commercial. -->
+    <PackageVersion Include="WolverineFx" Version="5.37.2" />
+    <PackageVersion Include="WolverineFx.RabbitMQ" Version="5.37.2" />
 
 
     <!-- Test packages -->

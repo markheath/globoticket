@@ -1,6 +1,7 @@
 using GloboTicket.Web.Models;
 using GloboTicket.Web.Services;
-using MassTransit;
+using Wolverine;
+using Wolverine.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,12 +18,21 @@ builder.Services.AddHttpClient<IShoppingBasketService, ShoppingBasketService>(c 
 
 builder.Services.AddSingleton<Settings>();
 
-builder.Services.AddMassTransit(x =>
+// Wolverine on the publishing side. We have no handlers in this project, so
+// the only thing to set up is the RabbitMQ transport plus conventional
+// routing — the same convention the Payment service applies, which is what
+// makes IMessageBus.PublishAsync<PaymentRequestMessageV2> land in the
+// matching consumer queue without either end naming an exchange explicitly.
+//
+// UseWolverine also registers IMessageBus in DI; that's what
+// ShoppingBasketController takes via constructor injection.
+builder.Host.UseWolverine(opts =>
 {
-    x.UsingRabbitMq((_, cfg) =>
-    {
-        cfg.Host(builder.Configuration.GetConnectionString("rabbitmq")!);
-    });
+    var rabbitConn = builder.Configuration.GetConnectionString("rabbitmq")!;
+
+    opts.UseRabbitMq(new Uri(rabbitConn))
+        .AutoProvision()
+        .UseConventionalRouting();
 });
 
 var app = builder.Build();

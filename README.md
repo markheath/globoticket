@@ -37,8 +37,8 @@ dotnet run --project GloboTicket.AppHost
 | Shared OpenTelemetry, health checks, resilience | `GloboTicket.ServiceDefaults/Extensions.cs` |
 | API versioning | `Asp.Versioning.Mvc` (query string `?api-version=2.0`) |
 | OpenAPI docs | `Microsoft.AspNetCore.OpenApi` + Scalar UI at `/scalar/v1` |
-| Messaging | MassTransit on RabbitMQ |
-| Tests | `*.IntegrationTests` (WebApplicationFactory) and `*.Tests` (MassTransit test harness) |
+| Messaging | Wolverine on RabbitMQ |
+| Tests | `*.IntegrationTests` (WebApplicationFactory) and `*.Tests` (Wolverine tracked-session harness) |
 
 ## Backwards-compatibility lessons
 
