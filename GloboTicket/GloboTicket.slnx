@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/Frontends/">
+    <Project Path="GloboTicket.Client/GloboTicket.Web.csproj" />
+  </Folder>
+  <Folder Name="/Services/">
+    <Project Path="GloboTicket.Services.EventCatalog/GloboTicket.Services.EventCatalog.csproj" />
+    <Project Path="GloboTicket.Services.EventCatalog.IntegrationTests/GloboTicket.Services.EventCatalog.IntegrationTests.csproj" />
+    <Project Path="GloboTicket.Services.Payment/GloboTicket.Services.Payment.csproj" />
+    <Project Path="GloboTicket.Services.Payment.Tests/GloboTicket.Services.Payment.Tests.csproj" />
+    <Project Path="GloboTicket.Services.ShoppingBasket/GloboTicket.Services.ShoppingBasket.csproj" />
+  </Folder>
+  <Folder Name="/Shared/">
+    <Project Path="GloboTicket.Messages/GloboTicket.Messages.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="../README.md" />
+  </Folder>
+  <Project Path="GloboTicket.AppHost/GloboTicket.AppHost.csproj" />
+  <Project Path="GloboTicket.ServiceDefaults/GloboTicket.ServiceDefaults.csproj" />
+</Solution>
