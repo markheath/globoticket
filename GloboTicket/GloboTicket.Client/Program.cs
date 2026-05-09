@@ -1,4 +1,3 @@
-using GloboTicket.Web.Controllers;
 using GloboTicket.Web.Models;
 using GloboTicket.Web.Services;
 using Wolverine;
@@ -17,11 +16,12 @@ builder.Services.AddHttpClient<IEventCatalogService, EventCatalogService>(c =>
 builder.Services.AddHttpClient<IShoppingBasketService, ShoppingBasketService>(c =>
     c.BaseAddress = new Uri("https+http://basket"));
 
-// CheckoutController takes an HttpClient parameter that points at the
-// ordering service for the JSON pass-through to GET /order/{id}/status.
-// Aspire injects the URL via service discovery — same pattern as the
-// other typed clients above.
-builder.Services.AddHttpClient<CheckoutController>(c =>
+// Typed client for the ordering service's status endpoint. Same
+// pattern as the other typed clients above — MVC's default controller
+// activator skips DI for the controller itself, so a typed wrapper
+// service (resolved through DI) is what actually gets the configured
+// HttpClient.
+builder.Services.AddHttpClient<IOrderStatusClient, OrderStatusClient>(c =>
     c.BaseAddress = new Uri("https+http://ordering"));
 
 builder.Services.AddSingleton<Settings>();

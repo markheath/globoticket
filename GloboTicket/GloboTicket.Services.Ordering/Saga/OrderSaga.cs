@@ -60,7 +60,18 @@ public class OrderSaga : Wolverine.Saga
     // Entry point. Wolverine creates the saga instance from the returned
     // tuple and persists it before the cascaded ReserveTicketsRequested
     // is dispatched.
-    public static (OrderSaga, ReserveTicketsRequested) Start(
+    //
+    // Note the explicit SaveChangesAsync: Wolverine's
+    // UseEntityFrameworkCoreTransactions middleware auto-flushes the
+    // DbContext for regular instance handlers, but a saga's static
+    // Start method runs outside that middleware path — without an
+    // explicit save here the Order + OrderProcessingState rows never
+    // commit, and downstream handlers querying the Order get null.
+    // Trade-off: Order writes commit in a separate transaction from
+    // the saga state. For a demo that's acceptable; in production a
+    // failure between these two commits would orphan an Order in
+    // Pending status with no saga to advance it.
+    public static async Task<(OrderSaga, ReserveTicketsRequested)> Start(
         SubmitOrderCommand cmd,
         OrderingDbContext db)
     {
@@ -89,6 +100,8 @@ public class OrderSaga : Wolverine.Saga
 
         SetStage(db, cmd.OrderId, OrderProcessingStage.ReservingTickets);
 
+        await db.SaveChangesAsync();
+
         var saga = new OrderSaga
         {
             Id = cmd.OrderId,
@@ -105,7 +118,14 @@ public class OrderSaga : Wolverine.Saga
 
     // After a successful reservation: advance to the next line, or move
     // on to the charge step if all lines are done.
-    public object Handle(TicketsReserved evt, OrderingDbContext db)
+    //
+    // Every instance handler that touches EF awaits SaveChangesAsync
+    // explicitly. UseEntityFrameworkCoreTransactions does not auto-flush
+    // DbContext changes from saga handlers in our configuration —
+    // observed during step 8 verification. Saga state itself persists
+    // via Wolverine's separate JSON storage, and cascaded messages flow
+    // via the outbox, but our own EF writes need a manual save.
+    public async Task<object> Handle(TicketsReserved evt, OrderingDbContext db)
     {
         ReservationsMade.Add(new ReservedLine(evt.EventId, evt.Count));
         NextLineIndex++;
@@ -117,12 +137,13 @@ public class OrderSaga : Wolverine.Saga
         }
 
         SetStage(db, Id, OrderProcessingStage.AuthorizingPayment);
+        await db.SaveChangesAsync();
         return new ChargeCardRequested(Id, CreditCardNumber, Total);
     }
 
     // Reservation failed (sold out or stock too low). Compensate any
     // earlier successful reservations and fail the order.
-    public IEnumerable<object> Handle(TicketsReservationFailed evt, OrderingDbContext db)
+    public async Task<IReadOnlyList<object>> Handle(TicketsReservationFailed evt, OrderingDbContext db)
     {
         SetStage(db, Id, OrderProcessingStage.ReleasingReservations);
 
@@ -132,6 +153,7 @@ public class OrderSaga : Wolverine.Saga
             : evt.Reason;
 
         FailOrder(db, reason);
+        await db.SaveChangesAsync();
 
         var releases = ReservationsMade
             .Select(r => (object)new ReleaseTicketsRequested(Id, r.EventId, r.Count))
@@ -145,22 +167,24 @@ public class OrderSaga : Wolverine.Saga
     // the PAN from saga state, and self-cascade to the persist
     // checkpoint. The actual Status flip to Confirmed happens in the
     // next handler so PersistingOrder is observable as a discrete stage.
-    public OrderPersisted Handle(CardCharged evt, OrderingDbContext db)
+    public async Task<OrderPersisted> Handle(CardCharged evt, OrderingDbContext db)
     {
         var order = db.Orders.Find(Id)!;
         order.PaymentReference = evt.PaymentReference;
 
         ClearCardDetails();
         SetStage(db, Id, OrderProcessingStage.PersistingOrder);
+        await db.SaveChangesAsync();
         return new OrderPersisted(Id);
     }
 
     // Charge declined. Same compensation path as a reservation failure.
-    public IEnumerable<object> Handle(CardChargeFailed evt, OrderingDbContext db)
+    public async Task<IReadOnlyList<object>> Handle(CardChargeFailed evt, OrderingDbContext db)
     {
         SetStage(db, Id, OrderProcessingStage.ReleasingReservations);
         ClearCardDetails();
         FailOrder(db, evt.Reason);
+        await db.SaveChangesAsync();
 
         var releases = ReservationsMade
             .Select(r => (object)new ReleaseTicketsRequested(Id, r.EventId, r.Count))
@@ -174,13 +198,14 @@ public class OrderSaga : Wolverine.Saga
     // status endpoint reports a confirmed order before we attempt the
     // email — the email is best-effort delivery on top of an already
     // committed sale.
-    public SendOrderEmailRequested Handle(OrderPersisted evt, OrderingDbContext db)
+    public async Task<SendOrderEmailRequested> Handle(OrderPersisted evt, OrderingDbContext db)
     {
         var order = db.Orders.Find(Id)!;
         order.Status = OrderStatus.Confirmed;
         order.CompletedAt = DateTimeOffset.UtcNow;
 
         SetStage(db, Id, OrderProcessingStage.SendingEmail);
+        await db.SaveChangesAsync();
         return new SendOrderEmailRequested(Id);
     }
 

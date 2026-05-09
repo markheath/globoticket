@@ -17,20 +17,20 @@ namespace GloboTicket.Web.Controllers;
 public class CheckoutController : Controller
 {
     private readonly IShoppingBasketService basketService;
-    private readonly HttpClient orderingClient;
+    private readonly IOrderStatusClient orderStatusClient;
     private readonly IMessageBus bus;
     private readonly Settings settings;
     private readonly ILogger<CheckoutController> logger;
 
     public CheckoutController(
         IShoppingBasketService basketService,
-        HttpClient orderingClient,
+        IOrderStatusClient orderStatusClient,
         IMessageBus bus,
         Settings settings,
         ILogger<CheckoutController> logger)
     {
         this.basketService = basketService;
-        this.orderingClient = orderingClient;
+        this.orderStatusClient = orderStatusClient;
         this.bus = bus;
         this.settings = settings;
         this.logger = logger;
@@ -103,7 +103,7 @@ public class CheckoutController : Controller
     [HttpGet]
     public async Task<IActionResult> OrderStatus(Guid orderId)
     {
-        var response = await orderingClient.GetAsync($"/order/{orderId}/status");
+        var response = await orderStatusClient.GetStatus(orderId);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
             return NotFound();

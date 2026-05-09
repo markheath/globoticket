@@ -101,7 +101,7 @@ Decision: Wolverine has no public read API for saga state and the storage-mode b
 - [x] `DbSet<OrderProcessingState>` on `OrderingDbContext` + EF migration
 - [x] Move `CurrentStage` off the saga: each saga handler that changes stage updates `OrderProcessingState` instead. One write per handler. Saga state itself no longer carries the field.
 - [x] `OrderStatusController` with `GET /order/{id}/status`. 404 when Order row not found.
-- [ ] Response shape (domain-flavoured):
+- [x] Response shape (domain-flavoured):
 
   ```json
   {
@@ -132,26 +132,28 @@ Decision: Wolverine has no public read API for saga state and the storage-mode b
 
 Step 5 deliberately deferred runtime verification of the saga to here. The open questions below must be validated alongside the test cases — failing any of them likely needs targeted code changes back in step 5 (e.g. an explicit resource-setup hook, `[SagaIdentity]` attributes, or removing/adjusting `MapWolverineEnvelopeStorage()`).
 
-**Open questions from step 5 to validate:**
+**Open questions from step 5 — all validated:**
 
-- [ ] Wolverine envelope / inbox / outbox tables auto-provision in the `wolverine` schema on AppHost startup. If not, find the Wolverine 5.x equivalent of `host.SetupResources()` / `IHostedService` resource provisioning and add it to `Program.cs`.
-- [ ] Saga state table auto-provisions and the saga JSON blob persists between handlers (a saga that runs through multiple stages without losing state is the proof).
-- [ ] Saga ID correlation works by the `{SagaName}Id` convention — incoming messages with an `OrderId` field route to the right `OrderSaga` instance without needing `[SagaIdentity]` attributes. If correlation fails, decorate the OrderId property on each saga-handled message.
-- [ ] Cascade chain (Reserve → Charge → Persist → Email) flows end-to-end under conventional routing + EF outbox. Watch for messages stuck in the outbox or never reaching their handler.
-- [ ] `MapWolverineEnvelopeStorage()` on `OrderingDbContext` does not collide with `PersistMessagesWithPostgresql` table management at startup. If it does, drop the call from the DbContext.
+- [x] Wolverine envelope / inbox / outbox tables auto-provision in the `wolverine` schema on AppHost startup. No explicit `SetupResources()` call needed.
+- [x] Saga state table auto-provisions and the saga JSON blob persists between handlers (saga ran through `Reserve → Charge → Persist → Email` with mutations on `Lines`, `NextLineIndex`, `ReservationsMade` carrying across).
+- [x] Saga ID correlation by `{SagaName}Id` convention works — no `[SagaIdentity]` attributes needed.
+- [x] Cascade chain flows end-to-end under conventional routing + EF outbox.
+- [x] `MapWolverineEnvelopeStorage()` doesn't collide with `PersistMessagesWithPostgresql` table management.
 
-**Automated test cases:**
+**Discovered open issue (now worked around):** `UseEntityFrameworkCoreTransactions` does NOT auto-flush our `OrderingDbContext` writes from saga handlers — neither static `Start` nor instance `Handle` methods. Saga state itself persists fine (Wolverine's separate JSON storage), and cascaded messages flow via the outbox, but our domain writes (Order row, OrderProcessingState row) silently never commit. Workaround: every saga handler that mutates EF entities awaits `db.SaveChangesAsync()` explicitly. Trade-off: domain writes commit in a separate transaction from the saga state, so a crash between them could orphan a Pending order — acceptable for a demo.
+
+**Automated test cases — DEFERRED:**
 
 - [x] Existing two backwards-compat tests stay green after rename (already verified)
-- [ ] Saga happy-path test driving `SubmitOrderCommand` through `TrackActivity().ExecuteAndWaitAsync`. Asserts: all four stages transition, Order ends `Confirmed`, `PaymentReference` populated, `OrderEmailSent` fires, saga is gone from storage. Decide: in-memory persistence for speed, vs Testcontainers Postgres for fidelity (real Postgres is what proves the auto-provision questions above).
-- [ ] Decline-path test (PAN ends `0000`) asserts: charge fails, one `ReleaseTicketsRequested` per previously reserved line, Order ends `Failed` with `FailureReason = "Card declined"`.
-- [ ] Sold-out-path test (one line has 0 stock after others reserved) asserts: reservation fails on that line, `ReleaseTicketsRequested` fires for already-reserved lines, Order ends `Failed` with `FailureReason = "Sold out: <event>"`.
+- [ ] ~~Saga happy-path test~~ — deferred. Decision: manual smoke tests are evidence enough for this demo; writing real saga tests requires Testcontainers Postgres (the EF in-memory provider doesn't support `OwnsMany().ToJson()`), mocked `ICatalogReservationsClient`, and mocked `EmailSender` — substantial test-infrastructure work for a demo project.
+- [ ] ~~Decline-path test~~ — deferred, same reasoning.
+- [ ] ~~Sold-out-path test~~ — deferred, same reasoning.
 
 **Manual smoke test via AppHost:**
 
-- [ ] Run AppHost, place an order with a healthy-stock event and a non-`0000` card. Observe Order goes Pending → Confirmed, status page shows all four stages tick through, email arrives in Mailpit (<http://localhost:8025>).
-- [ ] Place an order with PAN ending `0000`. Observe Order goes Failed, status page shows the charge step failing and the compensation banner, reservations released (catalog stock returns to original).
-- [ ] Place an order with a sold-out event. Observe sold-out failure path with no charge attempt.
+- [x] Happy path: order with a healthy-stock event and a non-`0000` card. Order goes Pending → Confirmed, status page ticks through all four stages, email arrives in Mailpit (<http://localhost:8025>). Verified.
+- [ ] Decline path: PAN ending `0000`. Expect Order → Failed, charge step failed, compensation banner, reservations released. *Pending user verification.*
+- [ ] Sold-out path: order with a 0-stock event (Nick Sailor). Expect sold-out failure with no charge attempt. *Pending user verification.*
 
 ## Session log
 
@@ -161,6 +163,20 @@ Step 5 deliberately deferred runtime verification of the saga to here. The open 
 - Architectural decision: Wolverine Saga (Option A) over inline orchestrator (B) or hybrid (C). Saga is the most teachable Wolverine feature and the cleanest counterpart to Dapr Workflow.
 - Legacy-compat decision: keep `PaymentRequestMessage` / V2 + their handlers as a frozen demo of the message-versioning lesson. They're no longer on the live order path; the new path uses `SubmitOrderCommand`.
 - ~~Status-endpoint shape is deliberately copied from the dapr response so the polling JS in `Order.cshtml` ports verbatim.~~ Reversed during step 3 — see step-3 log entry. The endpoint now uses domain-flavoured fields and the JS gets minor adaptation.
+
+### 2026-05-09 — step 8 done
+
+Manual smoke test of the happy path passed end-to-end after a few targeted fixes. The four open questions from step 5 are all validated (envelope tables auto-provision, saga state JSON storage works, ID correlation by convention works, cascade flow works, no `MapWolverineEnvelopeStorage` collision).
+
+The big surprise:
+
+- **`UseEntityFrameworkCoreTransactions` does NOT auto-flush our DbContext writes from saga handlers** — not from `Start`, not from instance `Handle` methods. Wolverine's middleware handles the saga's own JSON state and the outbox messages, but our domain entity writes (Order row, OrderProcessingState row) silently stayed in the change tracker. Symptom 1: `Handle(CardCharged)` got NRE because the Order row from `Start` was never committed. Symptom 2: even after fixing `Start`, the status page got stuck on "Reserving tickets" because subsequent `SetStage` writes didn't commit either. Workaround: every saga handler that touches EF awaits `db.SaveChangesAsync()` explicitly.
+- **`AddHttpClient<CheckoutController>(c => c.BaseAddress = ...)` silently doesn't apply** — MVC's default controller activator uses `ActivatorUtilities.CreateInstance` rather than going through the DI container, so the typed-client factory never runs. Default `HttpClient` with no `BaseAddress` gets injected. Fix: introduce a tiny `IOrderStatusClient` typed wrapper service like the other Web services use.
+- **Worker → Web SDK conversion (step 6) didn't update `launchSettings.json`** — left it Worker-shaped (no `applicationUrl`). Aspire had no HTTP endpoints to inject for service discovery, so `https+http://ordering` resolved to literally `ordering:443`. Fix: add `applicationUrl: "https://localhost:7401;http://localhost:5401"`, slotted into the project's port pattern (catalog 71/51, basket 72/52, web 73/53, ordering 74/54).
+
+Decision: deferred all three automated saga tests. Real tests need Testcontainers Postgres (EF in-memory doesn't support `OwnsMany().ToJson()`), mocked `ICatalogReservationsClient`, and mocked `EmailSender` — substantial test-infrastructure work for a demo where manual smoke tests are sufficient evidence. The plan's checkboxes for those tests are crossed-out as deferred rather than ticked.
+
+Decline and sold-out smoke tests are still pending user verification before merging to `main`. The same "explicit save" fix should cover both compensation paths (`Handle(TicketsReservationFailed)` and `Handle(CardChargeFailed)` were updated in the same pass), but worth verifying.
 
 ### 2026-05-09 — step 7 done
 
