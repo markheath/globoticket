@@ -1,5 +1,3 @@
-using System.Net;
-using System.Text.Json;
 using GloboTicket.Messages.Ordering;
 using GloboTicket.Web.Extensions;
 using GloboTicket.Web.Models;
@@ -103,23 +101,12 @@ public class CheckoutController : Controller
     // ordering service and render the outcome server-side. No polling.
     public async Task<IActionResult> Order(Guid orderId)
     {
-        var response = await orderStatusClient.GetStatus(orderId);
-        if (response.StatusCode == HttpStatusCode.NotFound)
+        var status = await orderStatusClient.GetStatus(orderId);
+        if (status is null)
         {
             return NotFound();
         }
-        response.EnsureSuccessStatusCode();
-
-        var body = await response.Content.ReadAsStringAsync();
-        var status = JsonSerializer.Deserialize<OrderStatusResponse>(body, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-        })!;
 
         return View(new OrderResultViewModel(orderId, status.Status, status.FailureReason));
     }
-
-    private record OrderStatusResponse(string Status, string? FailureReason);
 }
-
-public record OrderResultViewModel(Guid OrderId, string Status, string? FailureReason);

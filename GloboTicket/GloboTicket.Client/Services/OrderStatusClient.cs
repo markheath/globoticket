@@ -1,6 +1,9 @@
+using System.Net;
+using System.Net.Http.Json;
+
 namespace GloboTicket.Web.Services;
 
-// Pass-through to the ordering service's status endpoint. Same typed-
+// Pass-through to the ordering service's order endpoint. Same typed-
 // client pattern as IEventCatalogService and IShoppingBasketService —
 // MVC's default controller activator constructs controllers via
 // ActivatorUtilities (NOT through DI), so AddHttpClient<TController>
@@ -8,11 +11,21 @@ namespace GloboTicket.Web.Services;
 // typed service that IS resolved through DI fixes that.
 public interface IOrderStatusClient
 {
-    Task<HttpResponseMessage> GetStatus(Guid orderId);
+    Task<OrderStatusResult?> GetStatus(Guid orderId);
 }
+
+public record OrderStatusResult(string Status, string? FailureReason);
 
 public class OrderStatusClient(HttpClient client) : IOrderStatusClient
 {
-    public Task<HttpResponseMessage> GetStatus(Guid orderId) =>
-        client.GetAsync($"/order/{orderId}/status");
+    public async Task<OrderStatusResult?> GetStatus(Guid orderId)
+    {
+        var response = await client.GetAsync($"/order/{orderId}");
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<OrderStatusResult>();
+    }
 }

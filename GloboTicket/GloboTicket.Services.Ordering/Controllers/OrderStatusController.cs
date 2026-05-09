@@ -4,12 +4,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GloboTicket.Services.Ordering.Controllers;
 
-// Read-only status endpoint for the frontend's order page. The order
+// Read-only order endpoint for the frontend's result page. The order
 // is always in a terminal state (Confirmed or Failed) by the time the
 // frontend reads it — SubmitOrderCommand is invoked as a request/
 // response and only returns once the order flow has resolved.
 [ApiController]
-[Route("order/{orderId:guid}/status")]
+[Route("order/{orderId:guid}")]
 public class OrderStatusController : ControllerBase
 {
     private readonly OrderingDbContext db;

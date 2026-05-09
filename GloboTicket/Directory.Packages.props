@@ -40,8 +40,6 @@
     <!-- Messaging: Wolverine (MIT, JasperFx). Replaces MassTransit, whose v9+ went commercial. -->
     <PackageVersion Include="WolverineFx" Version="5.38.0" />
     <PackageVersion Include="WolverineFx.RabbitMQ" Version="5.38.0" />
-    <PackageVersion Include="WolverineFx.EntityFrameworkCore" Version="5.38.0" />
-    <PackageVersion Include="WolverineFx.Postgresql" Version="5.38.0" />
 
     <!-- SMTP. System.Net.Mail.SmtpClient is obsolete per Microsoft guidance. -->
     <PackageVersion Include="MailKit" Version="4.16.0" />
