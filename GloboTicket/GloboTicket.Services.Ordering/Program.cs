@@ -1,8 +1,10 @@
 using GloboTicket.Services.Ordering.DbContexts;
+using GloboTicket.Services.Ordering.Saga;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Wolverine;
 using Wolverine.EntityFrameworkCore;
+using Wolverine.Postgresql;
 using Wolverine.RabbitMQ;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -20,6 +22,17 @@ builder.Services.AddDbContextWithWolverineIntegration<OrderingDbContext>(options
         // the spurious dashboard error on a fresh DB.
         .ConfigureWarnings(w => w.Log((RelationalEventId.CommandError, LogLevel.Debug))));
 
+// Typed HttpClient against the catalog. Step handlers (Reserve/Release)
+// take ICatalogReservationsClient via DI; Wolverine routes handler
+// constructors through the standard container so this registers like
+// any ASP.NET Core typed client.
+builder.Services.AddHttpClient<ICatalogReservationsClient, CatalogReservationsClient>(c =>
+    c.BaseAddress = new Uri("https+http://eventcatalog"));
+
+// EmailSender wraps SMTP setup against the Mailpit endpoint Aspire
+// injects via WithReference("mailpit"). Singleton because it's stateless.
+builder.Services.AddSingleton<EmailSender>();
+
 // Wolverine wires itself up via UseWolverine on the host builder. There is no
 // AddConsumer<T>() call — handlers are discovered by scanning this assembly
 // for "Handler"/"Consumer" classes with a Handle/Consume method. (See
@@ -31,20 +44,27 @@ builder.Services.AddDbContextWithWolverineIntegration<OrderingDbContext>(options
 // publish PaymentRequestMessageV2 without either side needing to share queue
 // or exchange names — both ends apply the same convention to the same type.
 //
-// AutoProvision() creates the topology on startup; in production you'd
-// usually pre-provision instead.
+// AutoProvision() on the RabbitMQ transport creates the exchanges/queues
+// on startup; in production you'd usually pre-provision instead.
 //
-// UseEntityFrameworkCoreTransactions() opts in to the EF outbox: messages
-// cascaded from a saga step (next phase of work) are persisted alongside
-// any DbContext changes and dispatched after the commit succeeds.
+// PersistMessagesWithPostgresql is what creates Wolverine's envelope/inbox/
+// outbox + saga-state tables in the orderingdb. These tables aren't
+// scaffolded by EF migrations — Wolverine manages them itself, and the
+// AutoCreateMessageStorageOnStartup directive below tells it to materialise
+// them on first startup. UseEntityFrameworkCoreTransactions then makes
+// SaveChangesAsync flush the outbox in the same transaction as our domain
+// writes, so e.g. an Order row update + a cascaded ReserveTicketsRequested
+// commit atomically.
 builder.UseWolverine(opts =>
 {
     var rabbitConn = builder.Configuration.GetConnectionString("rabbitmq")!;
+    var orderingDbConn = builder.Configuration.GetConnectionString("orderingdb")!;
 
     opts.UseRabbitMq(new Uri(rabbitConn))
         .AutoProvision()
         .UseConventionalRouting();
 
+    opts.PersistMessagesWithPostgresql(orderingDbConn, "wolverine");
     opts.UseEntityFrameworkCoreTransactions();
 });
 

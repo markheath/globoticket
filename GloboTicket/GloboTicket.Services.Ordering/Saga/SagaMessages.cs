@@ -35,16 +35,22 @@ public record CardCharged(Guid OrderId, string PaymentReference);
 // saga compensates all reservations and fails the order.
 public record CardChargeFailed(Guid OrderId, string Reason);
 
-// --- Persist + email checkpoints -------------------------------------
+// --- Persist step (saga self-checkpoint) -----------------------------
 
-// Saga → saga. Cascaded by the saga to itself after the persist work
-// completes so saga state checkpoints between persist and email — a
-// crash mid-flight resumes from the right place.
+// Saga → saga. Cascaded after the charge succeeds; the next saga
+// handler is where the persist work (Status → Confirmed) actually
+// happens. The discrete checkpoint is what makes the PersistingOrder
+// stage observable to the status endpoint.
 public record OrderPersisted(Guid OrderId);
 
-// Saga → saga. Same pattern: saga cascades this to itself after the
-// email handler returns so saga state advances and the saga can mark
-// itself complete in a fresh transaction.
+// --- Email step -----------------------------------------------------
+
+// Saga → SendEmailHandler. Email is its own handler so SMTP failures
+// retry just the email step rather than re-running the persist work.
+public record SendOrderEmailRequested(Guid OrderId);
+
+// SendEmailHandler → saga. Saga consumes this and marks itself
+// completed.
 public record OrderEmailSent(Guid OrderId);
 
 // --- Compensation ----------------------------------------------------

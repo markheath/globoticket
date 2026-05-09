@@ -43,6 +43,9 @@
     <PackageVersion Include="WolverineFx.EntityFrameworkCore" Version="5.38.0" />
     <PackageVersion Include="WolverineFx.Postgresql" Version="5.38.0" />
 
+    <!-- SMTP. System.Net.Mail.SmtpClient is obsolete per Microsoft guidance. -->
+    <PackageVersion Include="MailKit" Version="4.16.0" />
+
 
     <!-- Test packages -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />

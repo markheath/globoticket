@@ -80,15 +80,16 @@ Existing `PaymentRequestMessage` / V2 stay where they are (namespace `GloboTicke
 
 ### 5. Saga + step handlers in ordering service
 
-- [ ] `OrderSaga : Saga` with `Id` = OrderId. Saga state holds the **transient** workflow concerns: `CurrentStage` (enum: ReservingTickets / AuthorizingPayment / PersistingOrder / SendingEmail / ReleasingReservations), `CreditCardNumber` + `CreditCardExpiry` (held for charge step only, never persisted to Order), `ReservationsMade` (for compensation).
-- [ ] `Start(SubmitOrderCommand)` → write Order row (`Status = Pending`, `Total` snapshotted from lines), cascade `ReserveTicketsRequested` for first line
-- [ ] `Handle(TicketsReserved)` → record reservation in saga, cascade next line's reserve, or move to `ChargeCardRequested`
-- [ ] `Handle(TicketsReservationFailed)` → cascade `ReleaseTicketsRequested` for everything reserved so far, set `Order.Status = Failed` + `FailureReason`
-- [ ] `Handle(CardCharged)` → set `Order.PaymentReference = txn_<guid>`, cascade `OrderPersisted`
-- [ ] `Handle(CardChargeFailed)` → cascade `ReleaseTicketsRequested` for all, set `Order.Status = Failed` + `FailureReason = "Card declined"`
-- [ ] `Handle(OrderPersisted)` → set `Order.Status = Confirmed` + `CompletedAt`, send email, cascade `OrderEmailSent`
-- [ ] Step handlers as separate classes: `ReserveTicketsHandler` (HTTP to catalog), `ChargeCardHandler` (in-process mock; PAN ending 0000 → fail; success returns fake `txn_<guid>` reference), `ReleaseTicketsHandler` (HTTP DELETE to catalog), `SendEmailHandler` (SMTP to Mailpit)
-- [ ] Each step updates Order row + saga `CurrentStage` using Wolverine's transactional outbox so DB write + outgoing message commit together
+- [x] `OrderSaga : Wolverine.Saga` with `Id` = OrderId. Saga state holds the **transient** workflow concerns: `CurrentStage` (enum: ReservingTickets / AuthorizingPayment / PersistingOrder / SendingEmail / ReleasingReservations), `CreditCardNumber` + `CreditCardExpiry` (cleared as soon as charge resolves), `ReservationsMade` (for compensation), `Lines` + `NextLineIndex` (for the per-line reserve loop), `Total`. Persisted as JSON by `WolverineFx.Postgresql` — NOT an EF entity.
+- [x] `Start(SubmitOrderCommand)` → write Order row (`Status = Pending`, `Total` snapshotted from lines), cascade `ReserveTicketsRequested` for first line
+- [x] `Handle(TicketsReserved)` → record reservation in saga, cascade next line's reserve, or move to `ChargeCardRequested`
+- [x] `Handle(TicketsReservationFailed)` → cascade `ReleaseTicketsRequested` for everything reserved so far, set `Order.Status = Failed` + `FailureReason = "Sold out: <event>"`, `MarkCompleted()`
+- [x] `Handle(CardCharged)` → set `Order.PaymentReference = txn_<guid>`, clear card details from saga state, cascade `OrderPersisted` (self)
+- [x] `Handle(CardChargeFailed)` → clear card details, set `Order.Status = Failed` + `FailureReason = "Card declined"`, cascade `ReleaseTicketsRequested` for all reservations, `MarkCompleted()`
+- [x] `Handle(OrderPersisted)` → set `Order.Status = Confirmed` + `CompletedAt`, cascade `SendOrderEmailRequested`
+- [x] `Handle(OrderEmailSent)` → `MarkCompleted()`
+- [x] Step handlers as separate classes: `ReserveTicketsHandler` (HTTP to catalog via `ICatalogReservationsClient`), `ChargeCardHandler` (in-process mock; PAN ending 0000 → fail; success returns fake `txn_<guid>` reference), `ReleaseTicketsHandler` (HTTP DELETE to catalog), `SendEmailHandler` (reads Order from DB, sends via `EmailSender` over MailKit/SMTP to Mailpit)
+- [x] Wolverine Postgres persistence via `opts.PersistMessagesWithPostgresql(orderingDbConn, "wolverine")` + EF outbox via `opts.UseEntityFrameworkCoreTransactions()` — saga state, envelope tables, and our own writes commit atomically
 
 ### 6. Status endpoint
 
@@ -119,12 +120,30 @@ Existing `PaymentRequestMessage` / V2 stay where they are (namespace `GloboTicke
 - [ ] `ShoppingBasketController.Pay` → redirects to `Checkout/Index` instead of publishing V2 message directly. Delete `Thanks.cshtml` (or repurpose).
 - [ ] Basket cleared after successful submit (call basket service from `Purchase`)
 
-### 8. Tests
+### 8. Tests + step-5 runtime verification
 
-- [ ] Existing two backwards-compat tests stay green after rename
-- [ ] Saga happy-path test using `TrackActivity().ExecuteAndWaitAsync` driving `SubmitOrderCommand` end-to-end
-- [ ] Decline-path test (PAN ends 0000) asserts compensation `ReleaseTicketsRequested` messages emitted for each reserved line
-- [ ] Sold-out-path test asserts compensation for already-reserved lines when a later line fails reservation
+Step 5 deliberately deferred runtime verification of the saga to here. The open questions below must be validated alongside the test cases — failing any of them likely needs targeted code changes back in step 5 (e.g. an explicit resource-setup hook, `[SagaIdentity]` attributes, or removing/adjusting `MapWolverineEnvelopeStorage()`).
+
+**Open questions from step 5 to validate:**
+
+- [ ] Wolverine envelope / inbox / outbox tables auto-provision in the `wolverine` schema on AppHost startup. If not, find the Wolverine 5.x equivalent of `host.SetupResources()` / `IHostedService` resource provisioning and add it to `Program.cs`.
+- [ ] Saga state table auto-provisions and the saga JSON blob persists between handlers (a saga that runs through multiple stages without losing state is the proof).
+- [ ] Saga ID correlation works by the `{SagaName}Id` convention — incoming messages with an `OrderId` field route to the right `OrderSaga` instance without needing `[SagaIdentity]` attributes. If correlation fails, decorate the OrderId property on each saga-handled message.
+- [ ] Cascade chain (Reserve → Charge → Persist → Email) flows end-to-end under conventional routing + EF outbox. Watch for messages stuck in the outbox or never reaching their handler.
+- [ ] `MapWolverineEnvelopeStorage()` on `OrderingDbContext` does not collide with `PersistMessagesWithPostgresql` table management at startup. If it does, drop the call from the DbContext.
+
+**Automated test cases:**
+
+- [x] Existing two backwards-compat tests stay green after rename (already verified)
+- [ ] Saga happy-path test driving `SubmitOrderCommand` through `TrackActivity().ExecuteAndWaitAsync`. Asserts: all four stages transition, Order ends `Confirmed`, `PaymentReference` populated, `OrderEmailSent` fires, saga is gone from storage. Decide: in-memory persistence for speed, vs Testcontainers Postgres for fidelity (real Postgres is what proves the auto-provision questions above).
+- [ ] Decline-path test (PAN ends `0000`) asserts: charge fails, one `ReleaseTicketsRequested` per previously reserved line, Order ends `Failed` with `FailureReason = "Card declined"`.
+- [ ] Sold-out-path test (one line has 0 stock after others reserved) asserts: reservation fails on that line, `ReleaseTicketsRequested` fires for already-reserved lines, Order ends `Failed` with `FailureReason = "Sold out: <event>"`.
+
+**Manual smoke test via AppHost:**
+
+- [ ] Run AppHost, place an order with a healthy-stock event and a non-`0000` card. Observe Order goes Pending → Confirmed, status page shows all four stages tick through, email arrives in Mailpit (<http://localhost:8025>).
+- [ ] Place an order with PAN ending `0000`. Observe Order goes Failed, status page shows the charge step failing and the compensation banner, reservations released (catalog stock returns to original).
+- [ ] Place an order with a sold-out event. Observe sold-out failure path with no charge attempt.
 
 ## Session log
 
@@ -134,6 +153,18 @@ Existing `PaymentRequestMessage` / V2 stay where they are (namespace `GloboTicke
 - Architectural decision: Wolverine Saga (Option A) over inline orchestrator (B) or hybrid (C). Saga is the most teachable Wolverine feature and the cleanest counterpart to Dapr Workflow.
 - Legacy-compat decision: keep `PaymentRequestMessage` / V2 + their handlers as a frozen demo of the message-versioning lesson. They're no longer on the live order path; the new path uses `SubmitOrderCommand`.
 - ~~Status-endpoint shape is deliberately copied from the dapr response so the polling JS in `Order.cshtml` ports verbatim.~~ Reversed during step 3 — see step-3 log entry. The endpoint now uses domain-flavoured fields and the JS gets minor adaptation.
+
+### 2026-05-09 — step 5 done
+
+- Saga structure follows the four user-visible steps: Reserve → Charge → Save → Email. Steps 1, 2, and 4 are separate Wolverine handler classes (`ReserveTicketsHandler`, `ChargeCardHandler`, `SendEmailHandler`); step 3 is intrinsically the saga's own EF write inside `Handle(OrderPersisted)`. Compensation has its own `ReleaseTicketsHandler`.
+- Added one new internal message — `SendOrderEmailRequested` — retroactively to step 4. The decision was that the email step should be a real handler (separate retry envelope, symmetrical with reservation/charge), not an inline service call from the saga.
+- Step 3's open question resolved: Wolverine envelope/outbox/saga tables aren't scaffolded by EF migrations. They're created at runtime by `WolverineFx.Postgresql` once `opts.PersistMessagesWithPostgresql(connectionString, "wolverine")` is configured. Added that call to `Program.cs`. Whether they auto-provision on first startup or need an explicit setup step will get exercised when we actually run the AppHost — flagged for verification.
+- Saga state is JSON-serialised by Wolverine, NOT an EF entity. `OrderingDbContext` does not have a `DbSet<OrderSaga>`. Earlier research had this wrong; corrected during step 5.
+- Saga ID correlation works by the `{SagaName}Id` convention — `OrderSaga.Id` matches messages' `OrderId` field automatically. No `[SagaIdentity]` attributes needed.
+- `Wolverine.Saga` (the base class) shadows `GloboTicket.Services.Ordering.Saga` (our namespace). Resolved by writing `: Wolverine.Saga` fully qualified rather than renaming our folder/namespace.
+- MailKit chosen over `System.Net.Mail.SmtpClient` (the latter is officially obsolete). Bumped to 4.16.0 (4.8.0 had moderate-severity advisories that tripped `TreatWarningsAsErrors`).
+- Catalog HTTP wrapped in a typed `ICatalogReservationsClient` (Reserve / Release) so the step handlers stay focused on bus-level concerns and the HTTP shape lives in one place.
+- Card details get cleared from saga state the moment the charge step resolves (success or failure) so they don't sit in the saga JSON blob longer than needed.
 
 ### 2026-05-09 — step 4 done
 
