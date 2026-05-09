@@ -93,8 +93,15 @@ Existing `PaymentRequestMessage` / V2 stay where they are (namespace `GloboTicke
 
 ### 6. Status endpoint
 
-- [ ] `GET /order/{id}/status` in ordering service. Composes Order row + saga state.
-- [ ] Response shape (domain-flavoured, NOT mimicking the dapr workflow API):
+Decision: Wolverine has no public read API for saga state and the storage-mode behaviour is uncertain (lightweight Postgres vs EF saga storage). Instead of querying the saga directly, the saga writes a small `OrderProcessingState` read model in the same DbContext. The status endpoint reads from there.
+
+- [x] Convert ordering project from Worker SDK to Web SDK; switch `Program.cs` to `WebApplication.CreateBuilder` and add `MapControllers`
+- [x] `OrderProcessingState` entity: `OrderId` (PK), `CurrentStage` (enum), `LastUpdatedAt`
+- [x] `OrderProcessingStage` enum (renamed from `OrderSagaStage`): ReservingTickets, AuthorizingPayment, PersistingOrder, SendingEmail, ReleasingReservations
+- [x] `DbSet<OrderProcessingState>` on `OrderingDbContext` + EF migration
+- [x] Move `CurrentStage` off the saga: each saga handler that changes stage updates `OrderProcessingState` instead. One write per handler. Saga state itself no longer carries the field.
+- [x] `OrderStatusController` with `GET /order/{id}/status`. 404 when Order row not found.
+- [ ] Response shape (domain-flavoured):
 
   ```json
   {
@@ -106,8 +113,8 @@ Existing `PaymentRequestMessage` / V2 stay where they are (namespace `GloboTicke
   }
   ```
 
-  When `status` is terminal, `currentStage` is `null`. While `Pending`, the endpoint reads saga state to populate `currentStage`.
-- [ ] 404 when Order row not found.
+  When `status` is terminal, `currentStage` is `null` (the endpoint reads `OrderProcessingState` only while `Status == Pending`).
+- [x] AppHost: Web project gets a `WithReference(ordering)` so Aspire injects the ordering URL for the frontend to call in step 7.
 
 ### 7. Frontend (`GloboTicket.Client`)
 
@@ -153,6 +160,14 @@ Step 5 deliberately deferred runtime verification of the saga to here. The open 
 - Architectural decision: Wolverine Saga (Option A) over inline orchestrator (B) or hybrid (C). Saga is the most teachable Wolverine feature and the cleanest counterpart to Dapr Workflow.
 - Legacy-compat decision: keep `PaymentRequestMessage` / V2 + their handlers as a frozen demo of the message-versioning lesson. They're no longer on the live order path; the new path uses `SubmitOrderCommand`.
 - ~~Status-endpoint shape is deliberately copied from the dapr response so the polling JS in `Order.cshtml` ports verbatim.~~ Reversed during step 3 — see step-3 log entry. The endpoint now uses domain-flavoured fields and the JS gets minor adaptation.
+
+### 2026-05-09 — step 6 done
+
+- Saga progress queryable via a separate `OrderProcessingState` EF entity rather than querying the saga's own state. Wolverine has no public read API for saga state and the lightweight-vs-EF saga-storage mode behaviour is uncertain — owning the read path ourselves is deterministic.
+- `CurrentStage` moved off `OrderSaga` entirely. The saga only ever wrote that field (never read it for its own decisions), so moving it costs nothing.
+- `OrderProcessingState` row created in `Start` and updated by saga handlers as the flow advances. Not deleted on saga completion — the row stays, but the status endpoint ignores it for terminal Orders so it makes no difference.
+- Ordering converted from Worker SDK to Web SDK. The legacy-compat handlers (`NewOrderHandler`/`V2`) and Wolverine wiring are unaffected; only the host shape changed.
+- `OrderStatusController` reads Order + (conditionally) `OrderProcessingState`. Aspire injects `ordering` into the Web project so the frontend's status page (step 7) can poll over service discovery.
 
 ### 2026-05-09 — step 5 done
 

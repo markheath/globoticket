@@ -7,8 +7,10 @@ using Wolverine.EntityFrameworkCore;
 using Wolverine.Postgresql;
 using Wolverine.RabbitMQ;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
+
+builder.Services.AddControllers();
 
 // AddDbContextWithWolverineIntegration replaces the usual AddDbContext when
 // we want SaveChangesAsync to flush Wolverine's outbox in the same
@@ -49,13 +51,11 @@ builder.Services.AddSingleton<EmailSender>();
 //
 // PersistMessagesWithPostgresql is what creates Wolverine's envelope/inbox/
 // outbox + saga-state tables in the orderingdb. These tables aren't
-// scaffolded by EF migrations — Wolverine manages them itself, and the
-// AutoCreateMessageStorageOnStartup directive below tells it to materialise
-// them on first startup. UseEntityFrameworkCoreTransactions then makes
-// SaveChangesAsync flush the outbox in the same transaction as our domain
-// writes, so e.g. an Order row update + a cascaded ReserveTicketsRequested
-// commit atomically.
-builder.UseWolverine(opts =>
+// scaffolded by EF migrations — Wolverine manages them itself.
+// UseEntityFrameworkCoreTransactions then makes SaveChangesAsync flush the
+// outbox in the same transaction as our domain writes, so e.g. an Order
+// row update + a cascaded ReserveTicketsRequested commit atomically.
+builder.Host.UseWolverine(opts =>
 {
     var rabbitConn = builder.Configuration.GetConnectionString("rabbitmq")!;
     var orderingDbConn = builder.Configuration.GetConnectionString("orderingdb")!;
@@ -68,13 +68,16 @@ builder.UseWolverine(opts =>
     opts.UseEntityFrameworkCoreTransactions();
 });
 
-var host = builder.Build();
+var app = builder.Build();
+
+app.MapDefaultEndpoints();
 
 // Apply EF migrations on startup. Same pattern as the catalog and basket
-// services — a fresh AppHost run gets a clean orderingdb and the schema
-// (including Wolverine's envelope tables) materialises before any handler
-// runs.
-using (var scope = host.Services.CreateScope())
+// services — a fresh AppHost run gets a clean orderingdb and our schema
+// (Orders + OrderProcessingStates) materialises before any handler runs.
+// Wolverine's own envelope/inbox/outbox/saga tables are not in this
+// migration; they're provisioned at runtime by the Postgres persistence.
+using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<OrderingDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<OrderingDbContext>>();
@@ -83,4 +86,6 @@ using (var scope = host.Services.CreateScope())
     logger.LogInformation("Ordering migrations applied.");
 }
 
-await host.RunAsync();
+app.MapControllers();
+
+await app.RunAsync();

@@ -27,7 +27,7 @@ var basket = builder.AddProject<Projects.GloboTicket_Services_ShoppingBasket>("b
     .WaitFor(basketDb)
     .WaitFor(eventCatalog);
 
-builder.AddProject<Projects.GloboTicket_Services_Ordering>("ordering")
+var ordering = builder.AddProject<Projects.GloboTicket_Services_Ordering>("ordering")
     .WithReference(rabbit)
     .WithReference(orderingDb)
     .WithReference(eventCatalog)
@@ -40,9 +40,11 @@ builder.AddProject<Projects.GloboTicket_Services_Ordering>("ordering")
 builder.AddProject<Projects.GloboTicket_Web>("web")
     .WithReference(eventCatalog)
     .WithReference(basket)
+    .WithReference(ordering)
     .WithReference(rabbit)
     .WaitFor(eventCatalog)
     .WaitFor(basket)
+    .WaitFor(ordering)
     .WaitFor(rabbit);
 
 builder.Build().Run();

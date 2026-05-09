@@ -1,7 +1,6 @@
 using GloboTicket.Messages.Ordering;
 using GloboTicket.Services.Ordering.DbContexts;
 using GloboTicket.Services.Ordering.Entities;
-using Wolverine;
 using EntityOrderLine = GloboTicket.Services.Ordering.Entities.OrderLine;
 using MessageOrderLine = GloboTicket.Messages.Ordering.OrderLine;
 
@@ -14,16 +13,19 @@ namespace GloboTicket.Services.Ordering.Saga;
 //   3. Save the order     (this saga's own EF write inside Handle(OrderPersisted))
 //   4. Send confirmation  (SendEmailHandler over SMTP to Mailpit)
 //
-// Saga state is JSON-serialised by Wolverine's Postgres persistence into
-// its own table — NOT an EF entity, NOT in OrderingDbContext. Wolverine
-// correlates incoming messages to a saga instance by matching the message's
-// OrderId field against this saga's Id field (`{SagaName}Id` convention).
+// Saga state itself is JSON-serialised by Wolverine's Postgres
+// persistence; it carries the in-flight orchestration data — line list,
+// reserve-loop pointer, reservations made for compensation, transient
+// card details. Wolverine correlates incoming messages to a saga
+// instance by matching the message's OrderId field against this saga's
+// Id field (`{SagaName}Id` convention).
 //
-// The Order row in OrderingDbContext is the long-lived domain record; it
-// is created in Start and updated by saga handlers as the flow progresses.
-// CurrentStage on the saga is what the status endpoint reads to render
-// live progress on the order page; OrderStatus on the Order is the final
-// domain outcome.
+// The saga does NOT carry the "current stage" — that lives on a
+// separate OrderProcessingState row in OrderingDbContext, written from
+// each saga handler. Wolverine has no public read API for saga state,
+// and putting "what step is running" on the Order entity would leak
+// workflow internals into the domain table. The OrderProcessingState
+// read model is the bridge.
 //
 // Cascading: handlers return either a single message or IEnumerable<object>
 // to publish; Wolverine's outbox commits those + saga-state + EF writes
@@ -31,7 +33,6 @@ namespace GloboTicket.Services.Ordering.Saga;
 public class OrderSaga : Wolverine.Saga
 {
     public Guid Id { get; set; }
-    public OrderSagaStage CurrentStage { get; set; }
 
     // Snapshot of the line collection — used for the per-line reserve
     // loop, total computation, and as the source of EventName when we
@@ -86,10 +87,11 @@ public class OrderSaga : Wolverine.Saga
             PlacedAt = DateTimeOffset.UtcNow,
         });
 
+        SetStage(db, cmd.OrderId, OrderProcessingStage.ReservingTickets);
+
         var saga = new OrderSaga
         {
             Id = cmd.OrderId,
-            CurrentStage = OrderSagaStage.ReservingTickets,
             Lines = [.. cmd.Lines],
             NextLineIndex = 0,
             Total = total,
@@ -103,7 +105,7 @@ public class OrderSaga : Wolverine.Saga
 
     // After a successful reservation: advance to the next line, or move
     // on to the charge step if all lines are done.
-    public object Handle(TicketsReserved evt)
+    public object Handle(TicketsReserved evt, OrderingDbContext db)
     {
         ReservationsMade.Add(new ReservedLine(evt.EventId, evt.Count));
         NextLineIndex++;
@@ -114,7 +116,7 @@ public class OrderSaga : Wolverine.Saga
             return new ReserveTicketsRequested(Id, next.EventId, next.TicketCount);
         }
 
-        CurrentStage = OrderSagaStage.AuthorizingPayment;
+        SetStage(db, Id, OrderProcessingStage.AuthorizingPayment);
         return new ChargeCardRequested(Id, CreditCardNumber, Total);
     }
 
@@ -122,7 +124,7 @@ public class OrderSaga : Wolverine.Saga
     // earlier successful reservations and fail the order.
     public IEnumerable<object> Handle(TicketsReservationFailed evt, OrderingDbContext db)
     {
-        CurrentStage = OrderSagaStage.ReleasingReservations;
+        SetStage(db, Id, OrderProcessingStage.ReleasingReservations);
 
         var failedLine = Lines.FirstOrDefault(l => l.EventId == evt.EventId);
         var reason = failedLine is not null
@@ -149,14 +151,14 @@ public class OrderSaga : Wolverine.Saga
         order.PaymentReference = evt.PaymentReference;
 
         ClearCardDetails();
-        CurrentStage = OrderSagaStage.PersistingOrder;
+        SetStage(db, Id, OrderProcessingStage.PersistingOrder);
         return new OrderPersisted(Id);
     }
 
     // Charge declined. Same compensation path as a reservation failure.
     public IEnumerable<object> Handle(CardChargeFailed evt, OrderingDbContext db)
     {
-        CurrentStage = OrderSagaStage.ReleasingReservations;
+        SetStage(db, Id, OrderProcessingStage.ReleasingReservations);
         ClearCardDetails();
         FailOrder(db, evt.Reason);
 
@@ -178,11 +180,12 @@ public class OrderSaga : Wolverine.Saga
         order.Status = OrderStatus.Confirmed;
         order.CompletedAt = DateTimeOffset.UtcNow;
 
-        CurrentStage = OrderSagaStage.SendingEmail;
+        SetStage(db, Id, OrderProcessingStage.SendingEmail);
         return new SendOrderEmailRequested(Id);
     }
 
-    // Email sent. Saga's job is done.
+    // Email sent. Saga's job is done. OrderProcessingState is left in
+    // place — the status endpoint ignores it for terminal Orders.
     public void Handle(OrderEmailSent evt) => MarkCompleted();
 
     private void FailOrder(OrderingDbContext db, string reason)
@@ -198,15 +201,30 @@ public class OrderSaga : Wolverine.Saga
         CreditCardNumber = string.Empty;
         CreditCardExpiry = string.Empty;
     }
-}
 
-public enum OrderSagaStage
-{
-    ReservingTickets,
-    AuthorizingPayment,
-    PersistingOrder,
-    SendingEmail,
-    ReleasingReservations,
+    // Upserts the OrderProcessingState row. EF tracks the row created
+    // in Start as Added on the first call and as Modified on subsequent
+    // calls, all flushed in the same transaction as the saga's other
+    // writes via UseEntityFrameworkCoreTransactions().
+    private static void SetStage(OrderingDbContext db, Guid orderId, OrderProcessingStage stage)
+    {
+        var existing = db.OrderProcessingStates.Local.FirstOrDefault(s => s.OrderId == orderId)
+            ?? db.OrderProcessingStates.Find(orderId);
+        if (existing is null)
+        {
+            db.OrderProcessingStates.Add(new OrderProcessingState
+            {
+                OrderId = orderId,
+                CurrentStage = stage,
+                LastUpdatedAt = DateTimeOffset.UtcNow,
+            });
+        }
+        else
+        {
+            existing.CurrentStage = stage;
+            existing.LastUpdatedAt = DateTimeOffset.UtcNow;
+        }
+    }
 }
 
 public record ReservedLine(Guid EventId, int Count);

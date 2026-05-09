@@ -11,6 +11,7 @@ public class OrderingDbContext : DbContext
     }
 
     public DbSet<Order> Orders { get; set; }
+    public DbSet<OrderProcessingState> OrderProcessingStates { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,6 +36,11 @@ public class OrderingDbContext : DbContext
             {
                 lines.ToJson();
             });
+        });
+
+        modelBuilder.Entity<OrderProcessingState>(b =>
+        {
+            b.HasKey(s => s.OrderId);
         });
     }
 }
