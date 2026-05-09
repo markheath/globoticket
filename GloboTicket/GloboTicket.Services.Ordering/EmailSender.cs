@@ -3,7 +3,7 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
 
-namespace GloboTicket.Services.Ordering.Saga;
+namespace GloboTicket.Services.Ordering;
 
 // SMTP wrapper for the order-confirmation email. The Aspire Mailpit
 // integration injects a connection string of the form

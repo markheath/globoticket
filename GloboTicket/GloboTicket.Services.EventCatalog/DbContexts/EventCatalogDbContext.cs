@@ -49,7 +49,7 @@ namespace GloboTicket.Services.EventCatalog.DbContexts
             var nickSailorGuid = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA318}");
             var michaelJohnsonGuid = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA319}");
 
-            // Mixed stock levels are intentional. The order saga's
+            // Mixed stock levels are intentional. The order flow's
             // reservation and compensation paths each need a deterministic
             // way to be triggered in demos:
             //   - 0 (Nick Sailor)         → sold-out path

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using GloboTicket.Messages.Ordering;
 using GloboTicket.Web.Extensions;
 using GloboTicket.Web.Models;
@@ -10,10 +11,12 @@ using MessageOrderLine = GloboTicket.Messages.Ordering.OrderLine;
 
 namespace GloboTicket.Web.Controllers;
 
-// Drives the checkout UX. Index shows the form, Purchase publishes a
-// SubmitOrderCommand to the ordering service over RabbitMQ and
-// redirects to a status page that polls the ordering service via the
-// OrderStatus action below.
+// Drives the checkout UX. Index shows the form; Purchase invokes
+// SubmitOrderCommand on the ordering service over RabbitMQ as a
+// request/response (Wolverine's IMessageBus.InvokeAsync) and waits for
+// the OrderResult before redirecting. By the time we redirect, the
+// order is in a terminal state (Confirmed or Failed) — Order then just
+// reads it and renders the result.
 public class CheckoutController : Controller
 {
     private readonly IShoppingBasketService basketService;
@@ -52,7 +55,7 @@ public class CheckoutController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Purchase(CheckoutViewModel checkout)
+    public async Task<IActionResult> Purchase(CheckoutViewModel checkout, CancellationToken ct)
     {
         if (!ModelState.IsValid)
         {
@@ -80,7 +83,12 @@ public class CheckoutController : Controller
 
         logger.LogInformation("Submitting order {OrderId} for {Customer}",
             orderId, checkout.Name);
-        await bus.PublishAsync(cmd);
+
+        // Request/response over RabbitMQ. Blocks until SubmitOrderHandler
+        // on the ordering service has either confirmed or failed the order.
+        var result = await bus.InvokeAsync<OrderResult>(cmd, ct);
+        logger.LogInformation("Order {OrderId} resolved: confirmed={Confirmed} reason={Reason}",
+            orderId, result.Confirmed, result.FailureReason);
 
         // Rotate the basket cookie so the next page load starts with an
         // empty basket. The previous basket row stays in the basket
@@ -90,26 +98,28 @@ public class CheckoutController : Controller
         return RedirectToAction(nameof(Order), new { orderId });
     }
 
-    // Live status page. The page itself is static — it polls
-    // OrderStatus below to render saga progress in real time.
-    public IActionResult Order(Guid orderId)
-    {
-        ViewData["OrderId"] = orderId;
-        return View();
-    }
-
-    // JSON pass-through to the ordering service's status endpoint.
-    // Polled by the Order page; not consumed by any server-side code.
-    [HttpGet]
-    public async Task<IActionResult> OrderStatus(Guid orderId)
+    // Result page. The order is already in a terminal state (Confirmed
+    // or Failed) by the time we get here, so we fetch it once from the
+    // ordering service and render the outcome server-side. No polling.
+    public async Task<IActionResult> Order(Guid orderId)
     {
         var response = await orderStatusClient.GetStatus(orderId);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
             return NotFound();
         }
+        response.EnsureSuccessStatusCode();
 
         var body = await response.Content.ReadAsStringAsync();
-        return Content(body, "application/json");
+        var status = JsonSerializer.Deserialize<OrderStatusResponse>(body, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+        })!;
+
+        return View(new OrderResultViewModel(orderId, status.Status, status.FailureReason));
     }
+
+    private record OrderStatusResponse(string Status, string? FailureReason);
 }
+
+public record OrderResultViewModel(Guid OrderId, string Status, string? FailureReason);

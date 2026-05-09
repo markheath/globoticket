@@ -4,13 +4,12 @@ namespace GloboTicket.Services.Ordering;
 
 // LEGACY-COMPAT ARTIFACT — frozen in place on purpose.
 //
-// The live order path no longer publishes PaymentRequestMessage(V2). It
-// publishes the new SubmitOrderCommand and is handled by the order saga.
-// These two handlers stay because PaymentRequestMessage / V2 are the
-// teaching artifact for the message-versioning lesson: the demo shows
-// that an upgraded service can still receive in-flight messages from a
-// pre-upgrade publisher. Deleting them — or renaming the message types,
-// or moving them into the saga — defeats that lesson.
+// The live order path uses SubmitOrderCommand, handled by
+// SubmitOrderHandler. These two handlers stay because
+// PaymentRequestMessage / V2 are the teaching artifact for the
+// message-versioning lesson: the demo shows that an upgraded service
+// can still receive in-flight messages from a pre-upgrade publisher.
+// Deleting them — or renaming the message types — defeats that lesson.
 //
 // The accompanying tests in GloboTicket.Services.Ordering.Tests are the
 // contract guard: if either handler stops binding, the tests time out.

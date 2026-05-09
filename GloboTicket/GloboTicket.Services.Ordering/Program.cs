@@ -1,10 +1,8 @@
+using GloboTicket.Services.Ordering;
 using GloboTicket.Services.Ordering.DbContexts;
-using GloboTicket.Services.Ordering.Saga;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Wolverine;
-using Wolverine.EntityFrameworkCore;
-using Wolverine.Postgresql;
 using Wolverine.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,11 +10,7 @@ builder.AddServiceDefaults();
 
 builder.Services.AddControllers();
 
-// AddDbContextWithWolverineIntegration replaces the usual AddDbContext when
-// we want SaveChangesAsync to flush Wolverine's outbox in the same
-// transaction as our own writes. The DbContext registers the same way —
-// Aspire's connection string injection still works.
-builder.Services.AddDbContextWithWolverineIntegration<OrderingDbContext>(options =>
+builder.Services.AddDbContext<OrderingDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("orderingdb"))
         // Same warning-suppression as the catalog: the migration-history
         // existence check is a try-SELECT-catch and EF logs the failed
@@ -24,10 +18,8 @@ builder.Services.AddDbContextWithWolverineIntegration<OrderingDbContext>(options
         // the spurious dashboard error on a fresh DB.
         .ConfigureWarnings(w => w.Log((RelationalEventId.CommandError, LogLevel.Debug))));
 
-// Typed HttpClient against the catalog. Step handlers (Reserve/Release)
-// take ICatalogReservationsClient via DI; Wolverine routes handler
-// constructors through the standard container so this registers like
-// any ASP.NET Core typed client.
+// Typed HttpClient against the catalog. SubmitOrderHandler injects
+// ICatalogReservationsClient and uses it for both Reserve and Release.
 builder.Services.AddHttpClient<ICatalogReservationsClient, CatalogReservationsClient>(c =>
     c.BaseAddress = new Uri("https+http://eventcatalog"));
 
@@ -35,37 +27,27 @@ builder.Services.AddHttpClient<ICatalogReservationsClient, CatalogReservationsCl
 // injects via WithReference("mailpit"). Singleton because it's stateless.
 builder.Services.AddSingleton<EmailSender>();
 
-// Wolverine wires itself up via UseWolverine on the host builder. There is no
-// AddConsumer<T>() call — handlers are discovered by scanning this assembly
-// for "Handler"/"Consumer" classes with a Handle/Consume method. (See
-// NewOrderHandler.cs for what that scan is matching against.)
+// Wolverine wires itself up via UseWolverine on the host builder. Handlers
+// are discovered by scanning this assembly for "Handler"/"Consumer"
+// classes with a Handle/Consume method (NewOrderHandler is the legacy
+// compat artefact, SubmitOrderHandler is the live order path).
 //
-// UseConventionalRouting() then says: "for every message type my handlers
-// accept, declare a RabbitMQ exchange named after the type and bind a queue
-// for this service to it." That convention is what lets the Web project
-// publish PaymentRequestMessageV2 without either side needing to share queue
-// or exchange names — both ends apply the same convention to the same type.
+// UseConventionalRouting() declares a RabbitMQ exchange per message type
+// and binds a queue for this service to it. The Web project publishes
+// against the same convention without either side sharing queue or
+// exchange names.
 //
-// AutoProvision() on the RabbitMQ transport creates the exchanges/queues
-// on startup; in production you'd usually pre-provision instead.
-//
-// PersistMessagesWithPostgresql is what creates Wolverine's envelope/inbox/
-// outbox + saga-state tables in the orderingdb. These tables aren't
-// scaffolded by EF migrations — Wolverine manages them itself.
-// UseEntityFrameworkCoreTransactions then makes SaveChangesAsync flush the
-// outbox in the same transaction as our domain writes, so e.g. an Order
-// row update + a cascaded ReserveTicketsRequested commit atomically.
+// SubmitOrderCommand is invoked via IMessageBus.InvokeAsync<OrderResult>
+// from the Web project — Wolverine handles the request/response round-
+// trip over RabbitMQ automatically when the handler returns a non-void
+// type matching the caller's awaited generic argument.
 builder.Host.UseWolverine(opts =>
 {
     var rabbitConn = builder.Configuration.GetConnectionString("rabbitmq")!;
-    var orderingDbConn = builder.Configuration.GetConnectionString("orderingdb")!;
 
     opts.UseRabbitMq(new Uri(rabbitConn))
         .AutoProvision()
         .UseConventionalRouting();
-
-    opts.PersistMessagesWithPostgresql(orderingDbConn, "wolverine");
-    opts.UseEntityFrameworkCoreTransactions();
 });
 
 var app = builder.Build();
@@ -73,10 +55,8 @@ var app = builder.Build();
 app.MapDefaultEndpoints();
 
 // Apply EF migrations on startup. Same pattern as the catalog and basket
-// services — a fresh AppHost run gets a clean orderingdb and our schema
-// (Orders + OrderProcessingStates) materialises before any handler runs.
-// Wolverine's own envelope/inbox/outbox/saga tables are not in this
-// migration; they're provisioned at runtime by the Postgres persistence.
+// services — a fresh AppHost run gets a clean orderingdb and the Orders
+// table materialises before any handler runs.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<OrderingDbContext>();

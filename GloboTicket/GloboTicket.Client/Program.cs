@@ -29,11 +29,11 @@ builder.Services.AddSingleton<Settings>();
 // Wolverine on the publishing side. We have no handlers in this project, so
 // the only thing to set up is the RabbitMQ transport plus conventional
 // routing — the same convention the Ordering service applies, which is what
-// makes IMessageBus.PublishAsync<PaymentRequestMessageV2> land in the
-// matching consumer queue without either end naming an exchange explicitly.
+// makes IMessageBus.InvokeAsync<OrderResult>(submitOrderCommand) reach the
+// matching handler queue without either end naming an exchange explicitly.
 //
 // UseWolverine also registers IMessageBus in DI; that's what
-// ShoppingBasketController takes via constructor injection.
+// CheckoutController takes via constructor injection.
 builder.Host.UseWolverine(opts =>
 {
     var rabbitConn = builder.Configuration.GetConnectionString("rabbitmq")!;

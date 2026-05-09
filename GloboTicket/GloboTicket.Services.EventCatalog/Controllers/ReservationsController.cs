@@ -38,8 +38,8 @@ public class ReservationsController : ControllerBase
         return Ok();
     }
 
-    // Release a previously made reservation. Used as the compensating
-    // step when a later stage of the order saga fails.
+    // Release a previously made reservation. Called by the ordering
+    // service to compensate when a later step in the order flow fails.
     [HttpDelete]
     public async Task<IActionResult> Release(Guid eventId, [FromBody] ReservationRequest request)
     {

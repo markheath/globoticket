@@ -1,9 +1,9 @@
 using System.Net.Http.Json;
 
-namespace GloboTicket.Services.Ordering.Saga;
+namespace GloboTicket.Services.Ordering;
 
 // Typed HttpClient for the catalog's reservation endpoints. Encapsulates
-// the URL shape so the step handlers don't carry path strings.
+// the URL shape so SubmitOrderHandler doesn't carry path strings.
 //
 // NOT idempotent against the catalog: a retry will decrement stock again.
 // Acceptable for the demo; a production system would pass an idempotency

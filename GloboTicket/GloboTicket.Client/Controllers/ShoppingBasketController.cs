@@ -63,10 +63,9 @@ namespace GloboTicket.Web.Controllers
 
         public IActionResult Pay()
         {
-            // The basket "Pay" button now hands off to the checkout flow,
-            // which collects customer + payment details and publishes the
-            // SubmitOrderCommand that drives the order saga in the
-            // Ordering service.
+            // Hand off to the checkout flow, which collects customer +
+            // payment details and submits the order to the Ordering
+            // service.
             return RedirectToAction("Index", "Checkout");
         }
     }

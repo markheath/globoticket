@@ -3,11 +3,6 @@ namespace GloboTicket.Services.Ordering.Entities;
 // Domain order — the long-lived record of a placed order. Recognisable
 // to anyone who has seen an e-commerce orders table: customer snapshot,
 // shipping address, lines, total, status, payment reference.
-//
-// Workflow / saga concerns deliberately do NOT live here. The current
-// step of the order saga, the in-flight credit-card details, and the
-// list of reservations made so far for compensation are all on the
-// transient saga state. The status endpoint composes both.
 public class Order
 {
     public Guid OrderId { get; set; }
@@ -32,14 +27,14 @@ public class Order
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
 
     // Opaque identifier returned by the (mock) payment provider when
-    // the charge succeeds. The PAN itself never reaches this table —
-    // it lives transiently in saga state for the duration of the charge
-    // step and is discarded with the saga. Null until the charge step
-    // runs; remains null on declined orders.
+    // the charge succeeds. The PAN itself is never persisted — it's
+    // held only on the in-flight SubmitOrderCommand for the duration
+    // of the charge step. Null until the charge succeeds; remains null
+    // on declined orders.
     public string? PaymentReference { get; set; }
 
-    // Populated only when Status == Failed. Free-text reason from the
-    // saga, e.g. "Sold out: <event>" or "Card declined".
+    // Populated only when Status == Failed. Free-text reason,
+    // e.g. "Sold out: <event>" or "Card declined".
     public string? FailureReason { get; set; }
 
     public DateTimeOffset PlacedAt { get; set; }
@@ -48,7 +43,7 @@ public class Order
 
 public enum OrderStatus
 {
-    Pending,    // saga in progress
+    Pending,    // order being processed
     Confirmed,  // tickets reserved, paid, persisted, emailed
     Failed,     // compensated; will not be fulfilled
 }

@@ -155,7 +155,64 @@ Step 5 deliberately deferred runtime verification of the saga to here. The open 
 - [x] Decline path: PAN ending `0000`. Order → Failed, charge step failed, compensation banner, reservations released. Manually verified.
 - [x] Sold-out path: order with a 0-stock event (Nick Sailor). Sold-out failure with no charge attempt. Manually verified.
 
+## Step 9 — replace Wolverine.Saga with inline orchestrator
+
+Step 8's smoke tests passed but only because every saga handler had an
+explicit `await db.SaveChangesAsync()` documented as a workaround for
+"Wolverine's transactional middleware doesn't auto-flush DbContext writes
+from saga handlers in our config". On reflection, that workaround is
+exactly the kind of anti-teaching artefact the demo should NOT carry —
+the framework's central promise (atomic outbox + EF transactions) had a
+documented hole in it, in the file readers were meant to learn from.
+
+The follow-up investigation found the hole was a missing
+`opts.Policies.AutoApplyTransactions()`. Adding that fixed the auto-flush
+for plain instance handlers but the saga's static `Start` method still
+swallowed its writes (Order row not committed → `Find` returned null in
+the next handler). Splitting the Order INSERT into a separate
+`RecordOrderPlacedHandler` worked for that one entity but the saga's
+instance `Handle` methods still didn't auto-flush their own
+`OrderProcessingState` updates — the polling status page got stuck on
+"Reserving tickets" while the saga ran to completion in the background.
+
+Two ways out: keep fighting the framework (file an issue, accept the
+workaround, document the trade-off), or step back and ask whether the
+saga was earning its complexity. The teaching goal is "show me a clean
+order flow with compensation" — the saga + 7 internal messages + read-
+model entity infrastructure was overkill for an in-process flow whose
+steps don't even need crash recovery in a demo.
+
+- [x] Replace `OrderSaga` + step handlers with a single `SubmitOrderHandler` running the four-step flow inline (reserve → charge → persist → email) with explicit `foreach (...) Release(...)` compensation at each failure point.
+- [x] `SubmitOrderCommand` now invoked via `IMessageBus.InvokeAsync<OrderResult>` (request/response over RabbitMQ) instead of fire-and-forget `PublishAsync`. Wolverine handles the reply queue automatically.
+- [x] New `OrderResult(bool Confirmed, string? FailureReason)` reply contract in `GloboTicket.Messages`.
+- [x] Frontend `Order` action becomes a synchronous result page — fetches the Order status server-side once and renders Confirmed / Failed. No polling JS, no live progress.
+- [x] Drop `OrderProcessingState` entity + migration. Drop the polling JSON pass-through action on the frontend.
+- [x] Drop `WolverineFx.EntityFrameworkCore` + `WolverineFx.Postgresql` packages from the Ordering project. Drop `MapWolverineEnvelopeStorage()`, `PersistMessagesWithPostgresql`, `UseEntityFrameworkCoreTransactions` from `Program.cs`. Plain `AddDbContext` again.
+- [x] Move `CatalogReservationsClient` and `EmailSender` out of the `Saga/` folder and rename namespace to `GloboTicket.Services.Ordering`. Delete the `Saga/` folder.
+- [x] Migrations regenerated as a single clean InitialCreate (Orders only, no envelope storage).
+- [x] Solution builds clean. Two backwards-compat tests still green.
+
+**What we lost vs the saga version:**
+
+- Per-step retry semantics. A transient SMTP failure now bubbles to a `try/catch` and is logged; Wolverine no longer redelivers the email step on its own.
+- Crash recovery. If the ordering service dies between `Reserve` and `Charge`, stock stays reserved against an order that never completes. In the saga version Wolverine would resume the saga on restart.
+- The "look, a saga" demo. We're using Wolverine purely as a message bus + request/response transport now.
+
+**What we gained:**
+
+- The compensation pattern is the explicit `foreach (...) Release(...)` block at each failure point in `SubmitOrderHandler.Handle` — readable in 30 seconds. That's the lesson the demo is actually teaching.
+- No comment block apologising for a framework workaround. No three separate stores for one workflow. No saga-state JSON blob to debug.
+- Synchronous result page — user clicks Checkout, waits ~1s, sees outcome. No polling, no AJAX, no half-loaded UI.
+
+The two legacy `PaymentRequestMessage`/V2 handlers stay where they are
+as the message-versioning teaching artefact. They're untouched by this
+step.
+
 ## Session log
+
+### 2026-05-09 — step 9 done
+
+Inline orchestrator replacing the Wolverine saga. See step 9 above for the full rationale. Net diff: 6 saga files deleted, 2 keepers (`CatalogReservationsClient`, `EmailSender`) moved up, one new `SubmitOrderHandler.cs` doing what 5 files used to. Frontend `Order.cshtml` lost the dapr-style stepped polling UI in favour of a synchronous result banner. `OrderProcessingState` entity + migration removed. Wolverine EF + Postgres packages dropped. Two backwards-compat tests stayed green.
 
 ### 2026-05-09 — UX tweak + decline/sold-out smoke tests
 

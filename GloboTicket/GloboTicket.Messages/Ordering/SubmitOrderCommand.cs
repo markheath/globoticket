@@ -1,23 +1,27 @@
 namespace GloboTicket.Messages.Ordering;
 
-// Inter-service contract — published by the Web project, handled by
-// the order saga in the Ordering service. Saga step / compensation
-// messages are NOT here; they live inside the Ordering project under
-// GloboTicket.Services.Ordering.Saga and never cross the bus to any
-// other service.
+// Inter-service contract — invoked by the Web project, handled by
+// SubmitOrderHandler in the Ordering service which runs the four-step
+// flow inline (reserve → charge → persist → email) and returns an
+// OrderResult to the caller. Wolverine's request/response pattern
+// (IMessageBus.InvokeAsync) carries the response back over RabbitMQ.
 //
 // The credit card number rides inside the message body. In a real
 // system the frontend would tokenise via the payment provider before
 // submit so the PAN never reaches our infrastructure; the demo skips
-// that and uses a mock charge step downstream. The saga holds the PAN
-// transiently in saga state for the duration of the charge step and
-// never persists it to the Order row.
+// that and uses a mock charge step inside SubmitOrderHandler. The PAN
+// is never persisted to the Order row.
 public record SubmitOrderCommand(
     Guid OrderId,
     CustomerDetails Customer,
     IReadOnlyList<OrderLine> Lines,
     string CreditCardNumber,
     string CreditCardExpiry);
+
+// Reply to SubmitOrderCommand. Confirmed orders carry no failure reason;
+// failed orders carry a human-readable reason ("Sold out: <event>",
+// "Card declined") that the frontend renders directly.
+public record OrderResult(bool Confirmed, string? FailureReason);
 
 public record CustomerDetails(
     string Name,
