@@ -59,12 +59,24 @@ the Dapr version uses.
 - [x] `OrderingDbContext` + initial migration
 - [x] Wolverine saga storage configured against the same Postgres (EF integration)
 
-### 4. New messages in `GloboTicket.Messages`
+### 4. New messages
 
-- [ ] `SubmitOrderCommand` (full order: id, customer, lines, card)
-- [ ] `OrderForCreation` / `OrderLine` / `CustomerDetails` records mirroring the dapr shapes
-- [ ] Step messages: `ReserveTicketsRequested`, `TicketsReserved`, `TicketsReservationFailed`, `ChargeCardRequested`, `CardCharged`, `CardChargeFailed`, `OrderPersisted`, `OrderEmailSent`, `ReleaseTicketsRequested`
-- [ ] Existing `PaymentRequestMessage` / V2 stay untouched
+`GloboTicket.Messages` is the **inter-service contract surface** — only types that cross a service boundary belong here. Saga step / compensation messages flow only between the saga and its in-process step handlers, so they live inside the ordering service itself, not in the contract assembly.
+
+In `GloboTicket.Messages` (namespace `GloboTicket.Messages.Ordering`):
+
+- [x] `SubmitOrderCommand` (Web → Ordering): `OrderId`, `CustomerDetails`, lines, credit card number, expiry
+- [x] `CustomerDetails` record (name, email, address, town, postcode)
+- [x] `OrderLine` record (event id, name, artist, ticket count, price)
+
+In `GloboTicket.Services.Ordering` (namespace `GloboTicket.Services.Ordering.Saga`):
+
+- [x] Reservation: `ReserveTicketsRequested`, `TicketsReserved`, `TicketsReservationFailed`
+- [x] Charge: `ChargeCardRequested`, `CardCharged`, `CardChargeFailed`
+- [x] Persist + email checkpoints: `OrderPersisted`, `OrderEmailSent` (cascaded by the saga to itself to advance state)
+- [x] Compensation: `ReleaseTicketsRequested`
+
+Existing `PaymentRequestMessage` / V2 stay where they are (namespace `GloboTicket.Messages`, no sub-namespace — they're frozen wire format).
 
 ### 5. Saga + step handlers in ordering service
 
@@ -122,6 +134,12 @@ the Dapr version uses.
 - Architectural decision: Wolverine Saga (Option A) over inline orchestrator (B) or hybrid (C). Saga is the most teachable Wolverine feature and the cleanest counterpart to Dapr Workflow.
 - Legacy-compat decision: keep `PaymentRequestMessage` / V2 + their handlers as a frozen demo of the message-versioning lesson. They're no longer on the live order path; the new path uses `SubmitOrderCommand`.
 - ~~Status-endpoint shape is deliberately copied from the dapr response so the polling JS in `Order.cshtml` ports verbatim.~~ Reversed during step 3 — see step-3 log entry. The endpoint now uses domain-flavoured fields and the JS gets minor adaptation.
+
+### 2026-05-09 — step 4 done
+
+- Split contract messages from internal saga messages. `GloboTicket.Messages` (referenced by Web + Ordering + tests) only carries `SubmitOrderCommand` + its support types `CustomerDetails` and `OrderLine`. The 7 saga step / compensation messages live in `GloboTicket.Services.Ordering.Saga` because they never cross a service boundary — they flow between the saga and step handlers in the same process.
+- Diverges from the original step-4 plan, which had everything in `GloboTicket.Messages`. The cleaner split also means the demo teaches "don't expose orchestration internals across boundaries" alongside the saga pattern itself.
+- New contract messages live under `namespace GloboTicket.Messages.Ordering` to keep the legacy `PaymentRequestMessage` family (no sub-namespace, frozen wire format) cleanly separated from the modern ordering contract.
 
 ### 2026-05-09 — step 3 done
 
