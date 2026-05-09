@@ -32,13 +32,13 @@ the Dapr version uses.
 ## Plan
 
 ### 1. Inventory in catalog
-- [ ] Add `TicketsAvailable` (int) to `GloboTicket.Services.EventCatalog.Entities.Event`
-- [ ] EF migration for the new column
-- [ ] Seed sample data with mixed stock: one sold-out (0), one nearly-empty (3), one near-empty (7), rest healthy (100). Mirror the dapr `SampleData.cs` pattern.
-- [ ] `EventRepository.ReserveTickets(Guid, int)` using atomic `ExecuteUpdateAsync` with `WHERE TicketsAvailable >= count`
-- [ ] `EventRepository.ReleaseTickets(Guid, int)` for compensation
-- [ ] `POST /api/events/{id}/reserve { count }` → 200 / 409
-- [ ] `DELETE /api/events/{id}/reserve { count }` → 200
+- [x] Add `TicketsAvailable` (int) to `GloboTicket.Services.EventCatalog.Entities.Event`
+- [x] EF migration for the new column
+- [x] Seed sample data with mixed stock: one sold-out (0), one nearly-empty (3), one near-empty (7), rest healthy (100). Mirror the dapr `SampleData.cs` pattern.
+- [x] `EventRepository.ReserveTickets(Guid, int)` using atomic `ExecuteUpdateAsync` with `WHERE TicketsAvailable >= count`
+- [x] `EventRepository.ReleaseTickets(Guid, int)` for compensation
+- [x] `POST /api/events/{id}/reserve { count }` → 200 / 409
+- [x] `DELETE /api/events/{id}/reserve { count }` → 200
 
 ### 2. Rename Payment → Ordering
 - [ ] Rename `GloboTicket.Services.Payment` project + folder + csproj + namespace → `GloboTicket.Services.Ordering`
@@ -97,7 +97,15 @@ the Dapr version uses.
 ## Session log
 
 ### 2026-05-09 — planning
+
 - Drafted plan and `docs/ordering-enhancement.md`. Created branch `ordering-enhancement`. No merges to `main` until all 8 steps are done.
 - Architectural decision: Wolverine Saga (Option A) over inline orchestrator (B) or hybrid (C). Saga is the most teachable Wolverine feature and the cleanest counterpart to Dapr Workflow.
 - Legacy-compat decision: keep `PaymentRequestMessage` / V2 + their handlers as a frozen demo of the message-versioning lesson. They're no longer on the live order path; the new path uses `SubmitOrderCommand`.
 - Status-endpoint shape is deliberately copied from the dapr response so the polling JS in `Order.cshtml` ports verbatim.
+
+### 2026-05-09 — step 1 done
+
+- Inventory lives on `Event`, not on `Ticket`. The basket and order shapes already use `EventId` + `TicketCount` only (no tier id), so per-tier stock would force basket changes that aren't in scope. Mirrors the dapr inventory model.
+- Reservation endpoints went on a new un-versioned `ReservationsController` rather than wedging command endpoints onto the V1/V2 read-DTO controllers. Routes: `POST /api/events/{eventId}/reserve` and `DELETE /api/events/{eventId}/reserve`, both taking `{ count }`.
+- Stock distribution mirrors dapr exactly so the saga demos behave identically: Nick Sailor 0 (sold out), John Egbert 3, Lighthouse 7, rest 100.
+- Solution builds clean, two existing catalog integration tests still pass. Migration `20260509122748_AddTicketsAvailable` adds the column with `defaultValue: 0` plus 8 `UpdateData` rows for the seeds.

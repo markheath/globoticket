@@ -17,4 +17,5 @@ public class Event
     public Guid CategoryId { get; set; }
     public Category Category { get; set; } = null!;
     public Collection<Ticket> Tickets { get; set; } = [];
+    public int TicketsAvailable { get; set; }
 }

@@ -30,5 +30,30 @@ namespace GloboTicket.Services.EventCatalog.Repositories
                 .Where(x => x.EventId == eventId)
                 .FirstOrDefaultAsync();
         }
+
+        // Atomic decrement at the database level: the row is only updated
+        // if enough stock exists. Returns false if the event is sold out
+        // or the requested quantity exceeds availability. The order saga
+        // relies on this atomicity — two concurrent reservations for the
+        // last ticket can't both succeed.
+        public async Task<bool> ReserveTickets(Guid eventId, int count)
+        {
+            var rowsAffected = await _eventCatalogDbContext.Events
+                .Where(e => e.EventId == eventId && e.TicketsAvailable >= count)
+                .ExecuteUpdateAsync(s => s.SetProperty(
+                    e => e.TicketsAvailable,
+                    e => e.TicketsAvailable - count));
+            return rowsAffected > 0;
+        }
+
+        // Compensating action when a downstream saga step fails.
+        public async Task ReleaseTickets(Guid eventId, int count)
+        {
+            await _eventCatalogDbContext.Events
+                .Where(e => e.EventId == eventId)
+                .ExecuteUpdateAsync(s => s.SetProperty(
+                    e => e.TicketsAvailable,
+                    e => e.TicketsAvailable + count));
+        }
     }
 }

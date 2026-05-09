@@ -49,6 +49,13 @@ namespace GloboTicket.Services.EventCatalog.DbContexts
             var nickSailorGuid = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA318}");
             var michaelJohnsonGuid = Guid.Parse("{CFB88E29-4744-48C0-94FA-B25B92DEA319}");
 
+            // Mixed stock levels are intentional. The order saga's
+            // reservation and compensation paths each need a deterministic
+            // way to be triggered in demos:
+            //   - 0 (Nick Sailor)         → sold-out path
+            //   - 3 (John Egbert)         → small-stock path (good for over-asking)
+            //   - 7 (Lighthouse Keeper's) → low stock
+            //   - 100 (everything else)   → happy path
             modelBuilder.Entity<Event>().HasData(new Event
             {
                 EventId = johnEgbertGuid,
@@ -58,7 +65,8 @@ namespace GloboTicket.Services.EventCatalog.DbContexts
                 Date = new DateTime(2026, 11, 1),
                 Description = "Join John for his farwell tour across 15 continents. John really needs no introduction since he has already mesmerized the world with his banjo.",
                 ImageUrl = "/img/banjo.jpg",
-                CategoryId = concertGuid
+                CategoryId = concertGuid,
+                TicketsAvailable = 3
             });
 
 
@@ -87,7 +95,8 @@ namespace GloboTicket.Services.EventCatalog.DbContexts
                 Date = new DateTime(2027, 2, 1),
                 Description = "Michael Johnson doesn't need an introduction. His 25 concert across the globe last year were seen by thousands. Can we add you to the list?",
                 ImageUrl = "/img/michael.jpg",
-                CategoryId = concertGuid
+                CategoryId = concertGuid,
+                TicketsAvailable = 100
             });
 
             modelBuilder.Entity<Ticket>().HasData(new Ticket()
@@ -116,7 +125,8 @@ namespace GloboTicket.Services.EventCatalog.DbContexts
                 Date = new DateTime(2027, 1, 1),
                 Description = "The critics are over the moon and so will you after you've watched this sing and dance extravaganza written by Nick Sailor, the man from 'My dad and sister'.",
                 ImageUrl = "/img/musical.jpg",
-                CategoryId = musicalGuid
+                CategoryId = musicalGuid,
+                TicketsAvailable = 0
             });
 
             modelBuilder.Entity<Ticket>().HasData(new Ticket()
@@ -150,7 +160,8 @@ namespace GloboTicket.Services.EventCatalog.DbContexts
                 Date = new DateTime(2027, 3, 14),
                 Description = "Aisha Patel returns to the city stage for one night only, blending classical violin with the rhythms of her South-Asian heritage. A warm, intimate evening that has sold out venues from London to Singapore.",
                 ImageUrl = "/img/aisha.jpg",
-                CategoryId = concertGuid
+                CategoryId = concertGuid,
+                TicketsAvailable = 100
             });
 
             modelBuilder.Entity<Ticket>().HasData(new Ticket
@@ -178,7 +189,8 @@ namespace GloboTicket.Services.EventCatalog.DbContexts
                 Date = new DateTime(2027, 5, 22),
                 Description = "Three-time Grammy nominee Maya Okafor brings her signature blend of jazz, soul and contemporary R&B to the headline stage. Expect new material from her upcoming album alongside the songs you already love.",
                 ImageUrl = "/img/maya.jpg",
-                CategoryId = concertGuid
+                CategoryId = concertGuid,
+                TicketsAvailable = 100
             });
 
             modelBuilder.Entity<Ticket>().HasData(new Ticket
@@ -206,7 +218,8 @@ namespace GloboTicket.Services.EventCatalog.DbContexts
                 Date = new DateTime(2027, 7, 4),
                 Description = "A vibrant new musical from composer Priya Raman following four neighbours over one transformative summer. Critics have called it the freshest score Broadway has heard in years.",
                 ImageUrl = "/img/sunlight.jpg",
-                CategoryId = musicalGuid
+                CategoryId = musicalGuid,
+                TicketsAvailable = 100
             });
 
             modelBuilder.Entity<Ticket>().HasData(new Ticket
@@ -234,7 +247,8 @@ namespace GloboTicket.Services.EventCatalog.DbContexts
                 Date = new DateTime(2027, 9, 12),
                 Description = "Helena Marsh's quietly devastating two-hander has won this year's Olivier Award for Best New Play. A lighthouse, a long-kept secret, and a daughter returning home after twenty years away.",
                 ImageUrl = "/img/lighthouse.jpg",
-                CategoryId = playGuid
+                CategoryId = playGuid,
+                TicketsAvailable = 7
             });
 
             modelBuilder.Entity<Ticket>().HasData(new Ticket
@@ -262,7 +276,8 @@ namespace GloboTicket.Services.EventCatalog.DbContexts
                 Date = new DateTime(2027, 10, 30),
                 Description = "Kenji Tanaka's celebrated drama, translated into eleven languages, makes its long-awaited debut on the main stage. A correspondence between two strangers across a closed border, and what happens when the border finally opens.",
                 ImageUrl = "/img/letters.jpg",
-                CategoryId = playGuid
+                CategoryId = playGuid,
+                TicketsAvailable = 100
             });
 
             modelBuilder.Entity<Ticket>().HasData(new Ticket
