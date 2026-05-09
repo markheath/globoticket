@@ -8,8 +8,14 @@ var builder = DistributedApplication.CreateBuilder(args);
 var postgres = builder.AddPostgres("postgres");
 var eventCatalogDb = postgres.AddDatabase("eventcatalogdb");
 var basketDb = postgres.AddDatabase("basketdb");
+var orderingDb = postgres.AddDatabase("orderingdb");
 
 var rabbit = builder.AddRabbitMQ("rabbitmq");
+
+// MailPit acts as a developer SMTP sink for the order-confirmation
+// email step. Web UI on 8025 lets you eyeball received messages during
+// a demo. Ports are pinned so the URL is stable across runs.
+var mailpit = builder.AddMailPit("mailpit", httpPort: 8025, smtpPort: 1025);
 
 var eventCatalog = builder.AddProject<Projects.GloboTicket_Services_EventCatalog>("eventcatalog")
     .WithReference(eventCatalogDb)
@@ -23,7 +29,13 @@ var basket = builder.AddProject<Projects.GloboTicket_Services_ShoppingBasket>("b
 
 builder.AddProject<Projects.GloboTicket_Services_Ordering>("ordering")
     .WithReference(rabbit)
-    .WaitFor(rabbit);
+    .WithReference(orderingDb)
+    .WithReference(eventCatalog)
+    .WithReference(mailpit)
+    .WaitFor(rabbit)
+    .WaitFor(orderingDb)
+    .WaitFor(eventCatalog)
+    .WaitFor(mailpit);
 
 builder.AddProject<Projects.GloboTicket_Web>("web")
     .WithReference(eventCatalog)
