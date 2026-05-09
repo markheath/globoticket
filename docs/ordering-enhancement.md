@@ -152,10 +152,15 @@ Step 5 deliberately deferred runtime verification of the saga to here. The open 
 **Manual smoke test via AppHost:**
 
 - [x] Happy path: order with a healthy-stock event and a non-`0000` card. Order goes Pending → Confirmed, status page ticks through all four stages, email arrives in Mailpit (<http://localhost:8025>). Verified.
-- [ ] Decline path: PAN ending `0000`. Expect Order → Failed, charge step failed, compensation banner, reservations released. *Pending user verification.*
-- [ ] Sold-out path: order with a 0-stock event (Nick Sailor). Expect sold-out failure with no charge attempt. *Pending user verification.*
+- [x] Decline path: PAN ending `0000`. Order → Failed, charge step failed, compensation banner, reservations released. Manually verified.
+- [x] Sold-out path: order with a 0-stock event (Nick Sailor). Sold-out failure with no charge attempt. Manually verified.
 
 ## Session log
+
+### 2026-05-09 — UX tweak + decline/sold-out smoke tests
+
+- Decline and sold-out smoke tests passed manually — the same explicit-`SaveChangesAsync` fix from the happy path covers both compensation paths.
+- Moved the basket's Pay button out of the layout's header `Widget` section. New location: a right-aligned button below the basket table, relabelled `Checkout` (matches `CheckoutController` and the actual destination — the basket Pay click now goes to a checkout form, not a payment).
 
 ### 2026-05-09 — planning
 
