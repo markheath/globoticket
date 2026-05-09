@@ -41,12 +41,12 @@ the Dapr version uses.
 - [x] `DELETE /api/events/{id}/reserve { count }` → 200
 
 ### 2. Rename Payment → Ordering
-- [ ] Rename `GloboTicket.Services.Payment` project + folder + csproj + namespace → `GloboTicket.Services.Ordering`
-- [ ] Rename `GloboTicket.Services.Payment.Tests` → `GloboTicket.Services.Ordering.Tests` similarly
-- [ ] Update `.slnx` references
-- [ ] Update AppHost: `Projects.GloboTicket_Services_Payment` → `Projects.GloboTicket_Services_Ordering`, resource name `payment` → `ordering`
-- [ ] Add a comment header on `NewOrderHandler` / `NewOrderV2Handler` explaining they're a frozen legacy-compat artifact, no longer on the live path
-- [ ] Verify backwards-compat tests still pass
+- [x] Rename `GloboTicket.Services.Payment` project + folder + csproj + namespace → `GloboTicket.Services.Ordering`
+- [x] Rename `GloboTicket.Services.Payment.Tests` → `GloboTicket.Services.Ordering.Tests` similarly
+- [x] Update `.slnx` references
+- [x] Update AppHost: `Projects.GloboTicket_Services_Payment` → `Projects.GloboTicket_Services_Ordering`, resource name `payment` → `ordering`
+- [x] Add a comment header on `NewOrderHandler` / `NewOrderV2Handler` explaining they're a frozen legacy-compat artifact, no longer on the live path
+- [x] Verify backwards-compat tests still pass
 
 ### 3. Add orderingdb + Mailpit + Order entity
 - [ ] AppHost: add `orderingdb` Postgres database
@@ -102,6 +102,14 @@ the Dapr version uses.
 - Architectural decision: Wolverine Saga (Option A) over inline orchestrator (B) or hybrid (C). Saga is the most teachable Wolverine feature and the cleanest counterpart to Dapr Workflow.
 - Legacy-compat decision: keep `PaymentRequestMessage` / V2 + their handlers as a frozen demo of the message-versioning lesson. They're no longer on the live order path; the new path uses `SubmitOrderCommand`.
 - Status-endpoint shape is deliberately copied from the dapr response so the polling JS in `Order.cshtml` ports verbatim.
+
+### 2026-05-09 — step 2 done
+
+- Renamed via `git mv` so history follows. Folder + csproj + namespace + UserSecretsId + launchSettings profile + `.slnx` paths + AppHost `csproj` ref + AppHost `cs` resource name all renamed in one commit.
+- `PaymentRequestMessage` / `PaymentRequestMessageV2` class names + filename + `PaymentBackwardsCompatibilityTests` class name **kept** — they're the wire format / teaching artifact, renaming defeats the lesson. Only the namespace they live in changed.
+- Added a `LEGACY-COMPAT ARTIFACT — frozen in place on purpose` header to `NewOrderHandler.cs` so the next reader understands these aren't the live order path. The two compat tests are the contract guard.
+- Stale "Payment service" comments in the Web project (`Client/Program.cs`, `ShoppingBasketController.cs`) updated to "Ordering service" since the recipient really did rename.
+- Solution builds clean. Both backwards-compat tests still green.
 
 ### 2026-05-09 — step 1 done
 

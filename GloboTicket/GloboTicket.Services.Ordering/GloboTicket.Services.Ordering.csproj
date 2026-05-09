@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <UserSecretsId>dotnet-GloboTicket.Services.Payment-FE161654-5659-4A84-B25C-238F08B1E8E1</UserSecretsId>
+    <UserSecretsId>dotnet-GloboTicket.Services.Ordering-FE161654-5659-4A84-B25C-238F08B1E8E1</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

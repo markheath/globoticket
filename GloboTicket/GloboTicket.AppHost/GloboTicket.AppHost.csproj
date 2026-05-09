@@ -15,7 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GloboTicket.Client\GloboTicket.Web.csproj" />
     <ProjectReference Include="..\GloboTicket.Services.EventCatalog\GloboTicket.Services.EventCatalog.csproj" />
-    <ProjectReference Include="..\GloboTicket.Services.Payment\GloboTicket.Services.Payment.csproj" />
+    <ProjectReference Include="..\GloboTicket.Services.Ordering\GloboTicket.Services.Ordering.csproj" />
     <ProjectReference Include="..\GloboTicket.Services.ShoppingBasket\GloboTicket.Services.ShoppingBasket.csproj" />
   </ItemGroup>
 

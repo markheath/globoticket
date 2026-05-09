@@ -20,7 +20,7 @@ builder.Services.AddSingleton<Settings>();
 
 // Wolverine on the publishing side. We have no handlers in this project, so
 // the only thing to set up is the RabbitMQ transport plus conventional
-// routing — the same convention the Payment service applies, which is what
+// routing — the same convention the Ordering service applies, which is what
 // makes IMessageBus.PublishAsync<PaymentRequestMessageV2> land in the
 // matching consumer queue without either end naming an exchange explicitly.
 //

@@ -70,8 +70,8 @@ namespace GloboTicket.Web.Controllers
             var basketId = Request.Cookies.GetCurrentBasketId(settings);
             // PublishAsync is fire-and-forget pub/sub. Wolverine looks at the
             // runtime type of the argument, finds the conventional exchange for
-            // PaymentRequestMessageV2, and the Payment service's queue (bound to
-            // that exchange by the same convention) picks it up.
+            // PaymentRequestMessageV2, and the Ordering service's queue (bound
+            // to that exchange by the same convention) picks it up.
             await bus.PublishAsync(new PaymentRequestMessageV2 { OrderId = basketId });
             return View("Thanks");
         }

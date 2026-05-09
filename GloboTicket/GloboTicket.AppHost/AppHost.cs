@@ -21,7 +21,7 @@ var basket = builder.AddProject<Projects.GloboTicket_Services_ShoppingBasket>("b
     .WaitFor(basketDb)
     .WaitFor(eventCatalog);
 
-builder.AddProject<Projects.GloboTicket_Services_Payment>("payment")
+builder.AddProject<Projects.GloboTicket_Services_Ordering>("ordering")
     .WithReference(rabbit)
     .WaitFor(rabbit);
 

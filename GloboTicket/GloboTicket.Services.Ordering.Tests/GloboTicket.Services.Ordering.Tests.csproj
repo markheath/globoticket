@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GloboTicket.Services.Payment\GloboTicket.Services.Payment.csproj" />
+    <ProjectReference Include="..\GloboTicket.Services.Ordering\GloboTicket.Services.Ordering.csproj" />
   </ItemGroup>
 
 </Project>

@@ -4,7 +4,7 @@ using Wolverine;
 using Wolverine.Tracking;
 using Xunit;
 
-namespace GloboTicket.Services.Payment.Tests;
+namespace GloboTicket.Services.Ordering.Tests;
 
 // These tests are the contract guard for the message-versioning lesson: if
 // someone deletes NewOrderHandler (V1) thinking V2 has fully replaced it,
@@ -42,8 +42,8 @@ public class PaymentBackwardsCompatibilityTests
     }
 
     // Discovery is what makes the magic work: we point Wolverine at the
-    // Payment assembly and it scans for handler classes — same as the real
-    // service does at startup. Nothing else has to be registered.
+    // Ordering assembly and it scans for handler classes — same as the
+    // real service does at startup. Nothing else has to be registered.
     private static async Task<IHost> BuildHost()
     {
         var builder = Host.CreateApplicationBuilder();

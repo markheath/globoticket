@@ -5,8 +5,8 @@
   <Folder Name="/Services/">
     <Project Path="GloboTicket.Services.EventCatalog/GloboTicket.Services.EventCatalog.csproj" />
     <Project Path="GloboTicket.Services.EventCatalog.IntegrationTests/GloboTicket.Services.EventCatalog.IntegrationTests.csproj" />
-    <Project Path="GloboTicket.Services.Payment/GloboTicket.Services.Payment.csproj" />
-    <Project Path="GloboTicket.Services.Payment.Tests/GloboTicket.Services.Payment.Tests.csproj" />
+    <Project Path="GloboTicket.Services.Ordering/GloboTicket.Services.Ordering.csproj" />
+    <Project Path="GloboTicket.Services.Ordering.Tests/GloboTicket.Services.Ordering.Tests.csproj" />
     <Project Path="GloboTicket.Services.ShoppingBasket/GloboTicket.Services.ShoppingBasket.csproj" />
   </Folder>
   <Folder Name="/Shared/">
