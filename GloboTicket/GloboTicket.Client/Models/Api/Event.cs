@@ -11,4 +11,5 @@ public class Event
     public string ImageUrl { get; set; } = null!;
     public Guid CategoryId { get; set; }
     public string CategoryName { get; set; } = null!;
+    public int TicketsAvailable { get; set; }
 }

@@ -13,4 +13,5 @@ public class EventDto
     public Guid CategoryId { get; set; }
     public string CategoryName { get; set; } = null!;
     public Collection<TicketDto> Tickets { get; set; } = [];
+    public int TicketsAvailable { get; set; }
 }

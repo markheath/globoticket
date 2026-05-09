@@ -1,24 +1,20 @@
-﻿using GloboTicket.Messages;
-using GloboTicket.Web.Extensions;
+﻿using GloboTicket.Web.Extensions;
 using GloboTicket.Web.Models;
 using GloboTicket.Web.Models.Api;
 using GloboTicket.Web.Models.View;
 using GloboTicket.Web.Services;
 using Microsoft.AspNetCore.Mvc;
-using Wolverine;
 
 namespace GloboTicket.Web.Controllers
 {
     public class ShoppingBasketController : Controller
     {
         private readonly IShoppingBasketService basketService;
-        private readonly IMessageBus bus;
         private readonly Settings settings;
 
-        public ShoppingBasketController(IShoppingBasketService basketService, IMessageBus bus, Settings settings)
+        public ShoppingBasketController(IShoppingBasketService basketService, Settings settings)
         {
             this.basketService = basketService;
-            this.bus = bus;
             this.settings = settings;
         }
 
@@ -65,15 +61,13 @@ namespace GloboTicket.Web.Controllers
             return RedirectToAction("Index");
         }
 
-        public async Task<IActionResult> Pay()
+        public IActionResult Pay()
         {
-            var basketId = Request.Cookies.GetCurrentBasketId(settings);
-            // PublishAsync is fire-and-forget pub/sub. Wolverine looks at the
-            // runtime type of the argument, finds the conventional exchange for
-            // PaymentRequestMessageV2, and the Ordering service's queue (bound
-            // to that exchange by the same convention) picks it up.
-            await bus.PublishAsync(new PaymentRequestMessageV2 { OrderId = basketId });
-            return View("Thanks");
+            // The basket "Pay" button now hands off to the checkout flow,
+            // which collects customer + payment details and publishes the
+            // SubmitOrderCommand that drives the order saga in the
+            // Ordering service.
+            return RedirectToAction("Index", "Checkout");
         }
     }
 }

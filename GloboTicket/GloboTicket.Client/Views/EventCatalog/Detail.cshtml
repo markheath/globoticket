@@ -5,7 +5,17 @@
     </div>
     <div class="col-md-6 ms-1">
         <div class="columnHeader">@Model.CategoryName.ToUpper()</div>
-        <h1 class="mt-2 bold">@Model.Name</h1>
+        <h1 class="mt-2 bold">
+            @Model.Name
+            @if (Model.TicketsAvailable == 0)
+            {
+                <span class="soldOut">SOLD&nbsp;OUT</span>
+            }
+            else if (Model.TicketsAvailable <= 10)
+            {
+                <span class="lowStock">ONLY&nbsp;@Model.TicketsAvailable&nbsp;LEFT</span>
+            }
+        </h1>
         <h3 class="mt-2">@Model.Artist</h3>
         <h3 class="mt-4 bold">@Model.Date.ToShortDateString()</h3>
         <div class="mt-4">@Model.Description</div>

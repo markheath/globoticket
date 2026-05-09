@@ -18,6 +18,7 @@ public static class EventCatalogMappings
         ImageUrl = @event.ImageUrl,
         CategoryId = @event.CategoryId,
         CategoryName = @event.Category.Name,
+        TicketsAvailable = @event.TicketsAvailable,
     };
 
     public static V2.EventDto ToDtoV2(this Event @event) => new()
@@ -31,6 +32,7 @@ public static class EventCatalogMappings
         CategoryId = @event.CategoryId,
         CategoryName = @event.Category.Name,
         Tickets = [.. @event.Tickets.Select(t => t.ToDto())],
+        TicketsAvailable = @event.TicketsAvailable,
     };
 
     public static CategoryDto ToDto(this Category category) => new()

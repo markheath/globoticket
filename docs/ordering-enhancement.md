@@ -118,14 +118,15 @@ Decision: Wolverine has no public read API for saga state and the storage-mode b
 
 ### 7. Frontend (`GloboTicket.Client`)
 
-- [ ] `CheckoutController` with `Index` (GET form, prefilled), `Purchase` (POST → publishes `SubmitOrderCommand` via `IMessageBus`, redirects to `Order/{id}`), `Order/{id}` (status page), `OrderStatus/{id}` (JSON pass-through to ordering)
-- [ ] HttpClient registered against `https+http://ordering`
-- [ ] `CheckoutViewModel` with name, email, address, town, postcode, card, expiry
-- [ ] `Views/Checkout/Index.cshtml` ported from dapr (form + card-preset dropdown including the "ends in 0000 will be declined" option)
-- [ ] `Views/Checkout/Order.cshtml` ported from dapr (workflow steps + polling JS). The polling JS needs adapting to the new response shape: read `status` (not `runtimeStatus`), `currentStage` enum (not `customStatus` strings), `failureReason` (not `output.reason`). The step indices and the `failedStepFromReason` heuristic stay the same.
-- [ ] CSS for `.workflow-step`, `.workflow-result`, `.workflow-compensation` ported from dapr
-- [ ] `ShoppingBasketController.Pay` → redirects to `Checkout/Index` instead of publishing V2 message directly. Delete `Thanks.cshtml` (or repurpose).
-- [ ] Basket cleared after successful submit (call basket service from `Purchase`)
+- [x] `CheckoutController` with `Index` (GET form, prefilled), `Purchase` (POST → publishes `SubmitOrderCommand` via `IMessageBus`, redirects to `Order/{id}`), `Order/{id}` (status page), `OrderStatus/{id}` (JSON pass-through to ordering)
+- [x] HttpClient registered against `https+http://ordering` (via `AddHttpClient<CheckoutController>(...)`)
+- [x] `CheckoutViewModel` with name, email, address, town, postcode, card, expiry
+- [x] `Views/Checkout/Index.cshtml` ported from dapr (form + card-preset dropdown including the "ends in 0000 will be declined" option)
+- [x] `Views/Checkout/Order.cshtml` ported from dapr (workflow steps + polling JS). Polling JS adapted to the new response shape: reads `status` (not `runtimeStatus`), `currentStage` enum (not `customStatus` strings), `failureReason` (not `output.reason`). Step indices and the `failedStepFromReason` heuristic kept verbatim.
+- [x] CSS for `.workflow-step`, `.workflow-result`, `.workflow-compensation` ported from dapr
+- [x] `ShoppingBasketController.Pay` → redirects to `Checkout/Index` instead of publishing V2 message directly. `Thanks.cshtml` deleted.
+- [x] Basket cleared after successful submit (cookie rotation rather than calling a basket-service clear method — orphaned basket row stays in basket DB but is harmless)
+- [x] **Sold-out / low-stock labels on event listings** (mirrors dapr UX): catalog's `EventDto` (V1 and V2) gained a `TicketsAvailable` field; frontend's `Event` API model gained the same; `DisplayTemplates/Event.cshtml` and `Detail.cshtml` render `SOLD OUT` (when 0) or `ONLY <N> LEFT` (when ≤ 10) badges; `.soldOut` and `.lowStock` CSS ported from dapr's `site.css`. Additive change — V1/V2 backwards-compat tests stayed green.
 
 ### 8. Tests + step-5 runtime verification
 
@@ -160,6 +161,15 @@ Step 5 deliberately deferred runtime verification of the saga to here. The open 
 - Architectural decision: Wolverine Saga (Option A) over inline orchestrator (B) or hybrid (C). Saga is the most teachable Wolverine feature and the cleanest counterpart to Dapr Workflow.
 - Legacy-compat decision: keep `PaymentRequestMessage` / V2 + their handlers as a frozen demo of the message-versioning lesson. They're no longer on the live order path; the new path uses `SubmitOrderCommand`.
 - ~~Status-endpoint shape is deliberately copied from the dapr response so the polling JS in `Order.cshtml` ports verbatim.~~ Reversed during step 3 — see step-3 log entry. The endpoint now uses domain-flavoured fields and the JS gets minor adaptation.
+
+### 2026-05-09 — step 7 done
+
+- Sold-out / low-stock badges added in step 7 (not in original plan). `TicketsAvailable` is now on V1 and V2 EventDtos and on the frontend's API model. Existing catalog backwards-compat tests stayed green because they only check `price`/`tickets` presence/absence — additive fields don't trip them.
+- Checkout flow: `Pay` button on the basket now redirects to `Checkout/Index` instead of publishing a V2 message directly. The V2 message + handlers stay as the legacy-compat / message-versioning teaching artifact, untouched.
+- `[CreditCard]` validation kept on the credit-card field. Both demo cards (Visa 4242×16, Mastercard 5454×12+0000) Luhn-validate, so the "ends in 0000 fails" behaviour is mocked at the saga's charge step rather than at the form.
+- Basket cleared via cookie rotation (`Response.Cookies.Delete`) rather than calling a basket-service clear method — the basket row in the DB becomes orphaned, but for this demo that's acceptable and keeps the basket service unchanged.
+- Polling JS in `Order.cshtml` is the dapr version with three field renames: `runtimeStatus → status`, `customStatus → currentStage` (now enum names like `ReservingTickets`, not human strings), `output.reason → failureReason`. Terminal-status set is `{Confirmed, Failed}` instead of dapr's `{Completed, Failed, Terminated, Canceled}`. The `failedStepFromReason` heuristic ports verbatim — failure-reason strings match dapr (`"Sold out: …"`, `"Card declined"`).
+- `IMessageBus` removed from `ShoppingBasketController` (Pay no longer publishes), tidying the unused field + the `GloboTicket.Messages` and `Wolverine` imports.
 
 ### 2026-05-09 — step 6 done
 

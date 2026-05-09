@@ -1,0 +1,77 @@
+@model GloboTicket.Web.Models.View.CheckoutViewModel
+
+<div class="checkout-form">
+    <h2 class="mb-4">Checkout</h2>
+
+    <form class="form" asp-action="Purchase">
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label">Name</label>
+            <input class="form-control" asp-for="Name" />
+            <span class="text-danger" asp-validation-for="Name"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label">Email</label>
+            <input class="form-control" asp-for="Email" type="email" />
+            <span class="text-danger" asp-validation-for="Email"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Address" class="form-label">Address</label>
+            <input class="form-control" asp-for="Address" />
+            <span class="text-danger" asp-validation-for="Address"></span>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <label asp-for="Town" class="form-label">Town</label>
+                <input class="form-control" asp-for="Town" />
+                <span class="text-danger" asp-validation-for="Town"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="PostalCode" class="form-label">Postal Code</label>
+                <input class="form-control" asp-for="PostalCode" />
+                <span class="text-danger" asp-validation-for="PostalCode"></span>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="cardPreset" class="form-label">Card preset</label>
+            <select id="cardPreset" class="form-select">
+                <option value="4242424242424242" selected>Visa 4242 4242 4242 4242 (will succeed)</option>
+                <option value="5454545454540000">Mastercard 5454 5454 5454 0000 (will be declined)</option>
+                <option value="">Enter manually</option>
+            </select>
+            <div class="form-text">Any card whose number ends in 0000 is rejected by the mock charge step.</div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <label asp-for="CreditCard" class="form-label">Credit Card</label>
+                <input class="form-control" asp-for="CreditCard" inputmode="numeric" autocomplete="cc-number" />
+                <span class="text-danger" asp-validation-for="CreditCard"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="CreditCardDate" class="form-label">Expiry (MM/YY)</label>
+                <input class="form-control" asp-for="CreditCardDate" placeholder="MM/YY" autocomplete="cc-exp" />
+                <span class="text-danger" asp-validation-for="CreditCardDate"></span>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary">SUBMIT ORDER</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const preset = document.getElementById('cardPreset');
+            const input = document.getElementById('CreditCard');
+            preset.addEventListener('change', () => {
+                input.value = preset.value;
+            });
+        })();
+    </script>
+}
