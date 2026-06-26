@@ -10,6 +10,24 @@ public static class BasketMappings
         UserId = basket.UserId,
     };
 
+    // Maps the basket plus its pricing summary. The resolved discount
+    // code (already validated/active, or null) is passed in so the
+    // amounts come from the single DiscountCalculator source of truth.
+    public static Basket ToModelWithSummary(this Entities.Basket basket, Entities.DiscountCode? discount)
+    {
+        var (subtotal, discountAmount, total) = DiscountCalculator.Compute(basket.BasketLines, discount);
+        return new Basket
+        {
+            BasketId = basket.BasketId,
+            UserId = basket.UserId,
+            NumberOfItems = basket.BasketLines.Sum(bl => bl.TicketAmount),
+            Subtotal = subtotal,
+            DiscountCode = discount?.Code,
+            DiscountAmount = discountAmount,
+            Total = total,
+        };
+    }
+
     public static Entities.Basket ToEntity(this BasketForCreation basket) => new()
     {
         UserId = basket.UserId,

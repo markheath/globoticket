@@ -20,7 +20,8 @@ namespace GloboTicket.Web.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var basketLines = await basketService.GetLinesForBasket(Request.Cookies.GetCurrentBasketId(settings));
+            var basketId = Request.Cookies.GetCurrentBasketId(settings);
+            var basketLines = await basketService.GetLinesForBasket(basketId);
             var lineViewModels = basketLines.Select(bl => new BasketLineViewModel
             {
                 LineId = bl.BasketLineId,
@@ -29,9 +30,50 @@ namespace GloboTicket.Web.Controllers
                 Date = bl.Event.Date,
                 Price = bl.Price,
                 Quantity = bl.TicketAmount
+            }).ToList();
+
+            // The basket service is authoritative for the pricing summary
+            // (subtotal, applied code, discount, total).
+            var basket = await basketService.GetBasket(basketId);
+
+            var viewModel = new BasketViewModel
+            {
+                Lines = lineViewModels,
+                Subtotal = basket?.Subtotal ?? lineViewModels.Sum(l => l.Price * l.Quantity),
+                DiscountCode = basket?.DiscountCode,
+                DiscountAmount = basket?.DiscountAmount ?? 0,
+                Total = basket?.Total ?? lineViewModels.Sum(l => l.Price * l.Quantity),
+                DiscountError = TempData["DiscountError"] as string,
+            };
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApplyDiscount(string code)
+        {
+            var basketId = Request.Cookies.GetCurrentBasketId(settings);
+            if (basketId != Guid.Empty && !string.IsNullOrWhiteSpace(code))
+            {
+                var (ok, error, _) = await basketService.ApplyDiscountCode(basketId, code.Trim());
+                if (!ok)
+                {
+                    TempData["DiscountError"] = error;
+                }
             }
-            );
-            return View(lineViewModels);
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveDiscount()
+        {
+            var basketId = Request.Cookies.GetCurrentBasketId(settings);
+            if (basketId != Guid.Empty)
+            {
+                await basketService.RemoveDiscountCode(basketId);
+            }
+            return RedirectToAction("Index");
         }
 
         [HttpPost]

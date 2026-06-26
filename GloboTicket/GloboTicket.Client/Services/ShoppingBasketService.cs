@@ -34,6 +34,32 @@ public class ShoppingBasketService(HttpClient client, Settings settings) : IShop
         return await response.Content.ReadFromJsonAsync<Basket>();
     }
 
+    public async Task<(bool ok, string? error, Basket? basket)> ApplyDiscountCode(Guid basketId, string code)
+    {
+        if (basketId == Guid.Empty)
+            return (false, "Your basket is empty.", null);
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/baskets/{basketId}/discount-code", new { code });
+
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            return (false, "That discount code is not valid.", null);
+        }
+
+        response.EnsureSuccessStatusCode();
+        var basket = await response.Content.ReadFromJsonAsync<Basket>();
+        return (true, null, basket);
+    }
+
+    public async Task RemoveDiscountCode(Guid basketId)
+    {
+        if (basketId == Guid.Empty)
+            return;
+        var response = await client.DeleteAsync($"/api/baskets/{basketId}/discount-code");
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<IEnumerable<BasketLine>> GetLinesForBasket(Guid basketId)
     {
         if (basketId == Guid.Empty)

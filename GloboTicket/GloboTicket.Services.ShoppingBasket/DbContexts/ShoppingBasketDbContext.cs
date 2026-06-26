@@ -13,6 +13,7 @@ namespace GloboTicket.Services.ShoppingBasket.DbContexts
         public DbSet<Basket> Baskets { get; set; }
         public DbSet<BasketLine> BasketLines { get; set; }
         public DbSet<Event> Events { get; set; }
+        public DbSet<DiscountCode> DiscountCodes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -24,6 +25,17 @@ namespace GloboTicket.Services.ShoppingBasket.DbContexts
             modelBuilder.Entity<Event>()
                 .Property(e => e.Date)
                 .HasColumnType("timestamp without time zone");
+
+            modelBuilder.Entity<DiscountCode>(b =>
+            {
+                b.HasKey(d => d.Code);
+
+                // A starter set of codes so the feature works out of the
+                // box. Editable in the DB; new codes need no redeploy.
+                b.HasData(
+                    new DiscountCode { Code = "SUMMER10", Type = DiscountType.Percent, Value = 10, IsActive = true },
+                    new DiscountCode { Code = "FIVEOFF", Type = DiscountType.Fixed, Value = 5, IsActive = true });
+            });
         }
     }
 }

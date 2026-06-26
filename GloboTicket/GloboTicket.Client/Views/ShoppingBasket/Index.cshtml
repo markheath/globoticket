@@ -1,4 +1,4 @@
-﻿@model IEnumerable<GloboTicket.Web.Models.View.BasketLineViewModel>
+@model GloboTicket.Web.Models.View.BasketViewModel
 
 <table class="table">
     <thead>
@@ -12,17 +12,52 @@
         </tr>
     </thead>
     <tbody>
-        @Html.EditorForModel()
+        @Html.EditorFor(m => m.Lines)
         <tr>
             <td colspan="4">
                 <a asp-controller="EventCatalog" asp-action="Index">
                     <img class="backIcon" src="~/img/arrow-down.svg" /> Back to event catalog
                 </a>
             </td>
-            <td class="bold big">$@Model.Sum(bl => bl.Price * bl.Quantity)</td>
+            <td>Subtotal</td>
+            <td class="bold">$@Model.Subtotal</td>
+        </tr>
+        @if (Model.HasDiscount)
+        {
+            <tr>
+                <td colspan="4"></td>
+                <td>
+                    Discount (@Model.DiscountCode)
+                    <form asp-action="RemoveDiscount" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-link btn-sm p-0 align-baseline">remove</button>
+                    </form>
+                </td>
+                <td class="bold">-$@Model.DiscountAmount</td>
+            </tr>
+        }
+        <tr>
+            <td colspan="4"></td>
+            <td>Total</td>
+            <td class="bold big">$@Model.Total</td>
         </tr>
     </tbody>
 </table>
+
+<div class="row mt-3">
+    <div class="col-md-6">
+        <form asp-action="ApplyDiscount" method="post" class="form-inline">
+            <div class="input-group">
+                <input type="text" name="code" class="form-control" placeholder="Discount code"
+                       value="" aria-label="Discount code" />
+                <button type="submit" class="btn btn-secondary">Apply</button>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.DiscountError))
+            {
+                <div class="text-danger mt-2">@Model.DiscountError</div>
+            }
+        </form>
+    </div>
+</div>
 
 <div class="text-end mt-3">
     <a class="btn btn-primary" asp-action="Pay">Checkout</a>
