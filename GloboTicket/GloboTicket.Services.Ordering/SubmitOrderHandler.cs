@@ -36,7 +36,10 @@ public class SubmitOrderHandler
         ILogger<SubmitOrderHandler> logger,
         CancellationToken ct)
     {
-        var total = cmd.Lines.Sum(l => l.Price * l.TicketCount);
+        var subtotal = cmd.Lines.Sum(l => l.Price * l.TicketCount);
+        // Clamp so a discount can never produce a negative charge.
+        var discount = Math.Clamp(cmd.DiscountAmount, 0, subtotal);
+        var total = subtotal - discount;
 
         var order = new Order
         {
@@ -54,6 +57,8 @@ public class SubmitOrderHandler
                 TicketCount = l.TicketCount,
                 Price = l.Price,
             })],
+            DiscountCode = cmd.DiscountCode,
+            DiscountAmount = discount,
             Total = total,
             Status = OrderStatus.Pending,
             PlacedAt = DateTimeOffset.UtcNow,

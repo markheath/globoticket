@@ -67,6 +67,11 @@ public class CheckoutController : Controller
             return RedirectToAction("Index", "ShoppingBasket");
         }
 
+        // Read the applied discount from the basket service, which is
+        // authoritative — the amount is recomputed there, never trusted
+        // from the browser.
+        var basket = await basketService.GetBasket(basketId);
+
         var orderId = Guid.NewGuid();
         var cmd = new SubmitOrderCommand(
             orderId,
@@ -77,14 +82,25 @@ public class CheckoutController : Controller
                 l.EventId, l.Event.Name, l.Event.Artist,
                 l.TicketAmount, l.Price))],
             checkout.CreditCard,
-            checkout.CreditCardDate);
+            checkout.CreditCardDate,
+            basket?.DiscountCode,
+            basket?.DiscountAmount ?? 0);
 
         logger.LogInformation("Submitting order {OrderId} for {Customer}",
             orderId, checkout.Name);
 
         // Request/response over RabbitMQ. Blocks until SubmitOrderHandler
         // on the ordering service has either confirmed or failed the order.
-        var result = await bus.InvokeAsync<OrderResult>(cmd, ct);
+        //
+        // The timeout doubles as the message deadline Wolverine sends to
+        // the handler. The default is 5s, which the *first* order after a
+        // cold AppHost start can exceed — dynamic handler codegen, first
+        // RabbitMQ channel, first EF query and the confirmation-email send
+        // all land on that one request. A declined card or sold-out event
+        // still returns an OrderResult well inside this window; we only
+        // raise the ceiling so a slow cold start doesn't surface as a
+        // spurious TimeoutException on a request that actually succeeded.
+        var result = await bus.InvokeAsync<OrderResult>(cmd, ct, timeout: TimeSpan.FromSeconds(30));
         logger.LogInformation("Order {OrderId} resolved: confirmed={Confirmed} reason={Reason}",
             orderId, result.Confirmed, result.FailureReason);
 

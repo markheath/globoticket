@@ -21,7 +21,14 @@ public class Order
     // change must not rewrite history.
     public List<OrderLine> Lines { get; set; } = [];
 
-    // Order total snapshot. Denormalised but historically correct.
+    // Discount snapshot. DiscountCode is the code the customer applied
+    // (null if none); DiscountAmount is what it took off the line
+    // subtotal. Total below is already net of this amount.
+    public string? DiscountCode { get; set; }
+    public int DiscountAmount { get; set; }
+
+    // Order total snapshot, net of any discount. Denormalised but
+    // historically correct.
     public int Total { get; set; }
 
     public OrderStatus Status { get; set; } = OrderStatus.Pending;

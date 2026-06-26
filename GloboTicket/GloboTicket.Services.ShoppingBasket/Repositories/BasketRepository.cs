@@ -25,6 +25,16 @@ namespace GloboTicket.Services.ShoppingBasket.Repositories
                 .AnyAsync(b => b.BasketId == basketId);
         }
 
+        public async Task<DiscountCode?> GetActiveDiscountCode(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+                return null;
+
+            var normalized = code.Trim();
+            return await _shoppingBasketDbContext.DiscountCodes
+                .FirstOrDefaultAsync(d => d.IsActive && d.Code.ToLower() == normalized.ToLower());
+        }
+
         public void AddBasket(Basket basket)
         {
             _shoppingBasketDbContext.Baskets.Add(basket);

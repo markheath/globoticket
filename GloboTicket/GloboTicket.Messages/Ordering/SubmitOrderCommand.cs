@@ -16,7 +16,12 @@ public record SubmitOrderCommand(
     CustomerDetails Customer,
     IReadOnlyList<OrderLine> Lines,
     string CreditCardNumber,
-    string CreditCardExpiry);
+    string CreditCardExpiry,
+    // Discount applied to the basket, if any. DiscountAmount is what the
+    // basket service knocked off the line subtotal; the handler trusts
+    // this amount (it's computed server-side, never from the browser).
+    string? DiscountCode = null,
+    int DiscountAmount = 0);
 
 // Reply to SubmitOrderCommand. Confirmed orders carry no failure reason;
 // failed orders carry a human-readable reason ("Sold out: <event>",
